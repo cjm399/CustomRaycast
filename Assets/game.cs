@@ -28,6 +28,7 @@ public struct bounds
 
 public struct raycast_result
 {
+    public bool didHit;
     public entity hitEntity;
     public v3 hitPos;
 }
@@ -98,7 +99,13 @@ public class game : MonoBehaviour
     private void Start()
     {
         gameWorld = new world(30_000);
-        SpawnLotsOfCubes(ref gameWorld, 29_999);
+        //SpawnLotsOfCubes(ref gameWorld, 29_999);
+
+        entity curr = CreateCubePrimative(new v3(0, 0, 0));
+        AddEntityToWorld(ref gameWorld, ref curr);
+
+        entity curr2 = CreateCubePrimative(new v3(1, 0, 1));
+        AddEntityToWorld(ref gameWorld, ref curr2);
 
         NativeArray<raycast_result> hitResults = new NativeArray<raycast_result>(1, Allocator.TempJob);
 
@@ -116,7 +123,7 @@ public class game : MonoBehaviour
         Debug.Log($"Raycast 2 took {sw.ElapsedMilliseconds}ms");*/
 
 
-#if false
+#if true
         RayCastAlongSphere(ref gameWorld, new v3(0, 0, 0), 20f);
 #endif
 #if false
@@ -132,8 +139,8 @@ public class game : MonoBehaviour
     {
         int dimSizeX = (int)Mathf.Floor(Mathf.Sqrt(_spawnCount));
         int dimSizeY = dimSizeX;
-        float paddingX = .25f;
-        float paddingY = .25f;
+        float paddingX = .5f;
+        float paddingY = .5f;
         int count = 0;
         for (int y = 0; y < dimSizeY; ++y)
         {
@@ -151,17 +158,10 @@ public class game : MonoBehaviour
     {
         System.Diagnostics.Stopwatch sw = System.Diagnostics.Stopwatch.StartNew();
         float diameter = _radius * 2;
-        float yStep = _radius/50;
-        float cStep = 360 / 50;
+        float yStep = _radius/25;
+        float cStep = 360 / 25;
         raycast_result hitResult;
         int count = 0;
-        Color[] colors = new Color[6];
-        colors[0] = Color.green;
-        colors[1] = Color.red;
-        colors[2] = Color.blue;
-        colors[3] = Color.black;
-        colors[4] = Color.magenta;
-        colors[5] = Color.white;
 
         for (float y = -_radius;
             y <= _radius;
@@ -179,13 +179,14 @@ public class game : MonoBehaviour
                 start = v3Normalize(start);
                 start = v3Mul(start, _radius);
                 v3 dir = v3Normalize(v3Substractv3(new v3(0, 0, 0), start));
-                if (SlowRayCast(_w, start, dir, _radius, out hitResult))
+                if (FastRaycast(ref _w, start, dir, _radius, out hitResult))
                 {
                     raycast_result result2;
                     v3 newStart = v3Addv3(start, v3FromDirAndMag(start, v3Mul(dir, 1f), _radius*2));
-                    if (SlowRayCast(_w, newStart, v3Mul(dir, 1f), _radius * 2, out result2))
+                    //newStart = v3Addv3(hitResult.hitPos, v3FromDirAndMag(hitResult.hitPos, dir, 1));
+                    if (FastRaycast(ref _w, newStart, v3Mul(dir, 1f), _radius * 2, out result2))
                     {
-                        Debug.DrawLine(v3ToVector3(hitResult.hitPos), v3ToVector3(result2.hitPos), colors[(count/2)%6], Mathf.Infinity);
+                        Debug.DrawLine(v3ToVector3(hitResult.hitPos), v3ToVector3(result2.hitPos), Color.green, Mathf.Infinity);
                     }
                     count++;
                 }
@@ -352,6 +353,16 @@ public class game : MonoBehaviour
         return _a.x == _b.x && _a.y == _b.y && _a.z == _b.z;
     }
 
+    public static bool FastRaycast(ref world _world, v3 _start, v3 _dir, float _maxDist, out raycast_result _hitResult)
+    {
+        NativeArray<raycast_result> hitResults = new NativeArray<raycast_result>(1, Allocator.TempJob);
+        var runMyJob = new RaycastJob { gameWorld = _world, start = _start, dir = _dir, maxDist = _maxDist, hitRes = hitResults };
+        runMyJob.Run();
+        _hitResult = runMyJob.hitRes[0];
+        hitResults.Dispose();
+        return _hitResult.didHit;
+    }
+
     [System.Diagnostics.Contracts.Pure]
     public static bool SlowRayCast(world _world, v3 _start, v3 _dir, float _maxDist, out raycast_result _hitResult)
     {
@@ -370,6 +381,7 @@ public class game : MonoBehaviour
                 {
                     _hitResult.hitEntity = _world.entities[entityIndex];
                     _hitResult.hitPos = checkPos;
+                    _hitResult.didHit = true;
                     return true;
                 }
             }
