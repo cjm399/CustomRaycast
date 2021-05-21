@@ -116,15 +116,27 @@ public class game : MonoBehaviour
         mainCam = Camera.main;
         gameWorld = new world(30000);
         renderObjs = new render_obj[gameWorld.maxEntities];
+
+#if true
+
         SpawnLotsOfCubes(ref gameWorld, gameWorld.maxEntities);
 
         raycast_result hitResult;
         System.Diagnostics.Stopwatch sw = System.Diagnostics.Stopwatch.StartNew();
-        FastRaycast(ref gameWorld, new v3(-50, 0, -50), forward, 10000, out hitResult);
+        FastRaycast(ref gameWorld, new v3(50, 0, -50), forward, 10000, out hitResult);
         sw.Stop();
         Debug.Log($"Raycast took {sw.ElapsedMilliseconds}ms and hit {hitResult.hitPos.x}, {hitResult.hitPos.y}, {hitResult.hitPos.z}");
+#endif 
 
 #if true
+        SpawnLotsOfGameObjects(gameWorld.maxEntities);
+        System.Diagnostics.Stopwatch sw2 = System.Diagnostics.Stopwatch.StartNew();
+        Physics.Raycast(new Vector3(50, 0, -5), Vector3.forward, 10000);
+        sw2.Stop();
+        Debug.Log($"Unity Raycast took {sw2.ElapsedMilliseconds}ms");
+#endif 
+
+#if false
         RayCastAlongSphere(ref gameWorld, new v3(0, 0, 0), 20f);
 #endif
 #if false
@@ -138,9 +150,28 @@ public class game : MonoBehaviour
 
     private void Update()
     {
-        for (int i = 0; i < gameWorld.entityCount; ++i)
+        /*for (int i = 0; i < gameWorld.entityCount; ++i)
         {
             Graphics.DrawMesh(renderObjs[i].mesh, v3ToVector3(gameWorld.entities[i].position), Quaternion.identity, renderObjs[i].mat, 1, mainCam);
+        }*/
+    }
+
+    private void SpawnLotsOfGameObjects(int _spawnCount)
+    {
+        int dimSizeX = (int)Mathf.Floor(Mathf.Sqrt(_spawnCount));
+        int dimSizeY = dimSizeX;
+        float paddingX = .5f;
+        float paddingY = .5f;
+        for (int y = 0; y < dimSizeY; ++y)
+        {
+            for (int x = 0; x < dimSizeX; ++x)
+            {
+                GameObject go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                go.transform.position = new Vector3(x + paddingX, y + paddingY, 0);
+                paddingX += .25f;
+            }
+            paddingY += .25f;
+            paddingX = .5f;
         }
     }
 
@@ -150,7 +181,6 @@ public class game : MonoBehaviour
         int dimSizeY = dimSizeX;
         float paddingX = .5f;
         float paddingY = .5f;
-        int count = 0;
         for (int y = 0; y < dimSizeY; ++y)
         {
             for (int x = 0; x < dimSizeX; ++x)
