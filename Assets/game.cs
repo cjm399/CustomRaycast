@@ -8,42 +8,24 @@ using Unity.Jobs;
 using Unity.Mathematics;
 
 
-public struct v3
-{
-    public float x, y, z;
-
-    public v3(float _x, float _y, float _z)
-    {
-        x = _x;
-        y = _y;
-        z = _z;
-    }
-}
-
 public struct bounds
 {
-    public v3 minPoints;
-    public v3 maxPoints;
+    public float3 minPoints;
+    public float3 maxPoints;
 }
 
 public struct raycast_result
 {
     public bool didHit;
     public entity hitEntity;
-    public v3 hitPos;
+    public float3 hitPos;
 }
 
 public struct entity
 {
-    public v3 position;
-    public v3 scale;
+    public float3 position;
+    public float3 scale;
     public bounds bounds;
-}
-
-public struct render_obj
-{
-    public Mesh mesh;
-    public Material mat;
 }
 
 public struct world
@@ -67,29 +49,28 @@ public class game : MonoBehaviour
     public Mesh boxMesh;
     public Material material;
     public Camera mainCam;
-    public render_obj[] renderObjs;
 
-    public static v3 up = new v3(0, 1, 0);
-    public static v3 down = new v3(0, -1, 0);
-    public static v3 left = new v3(-1, 0, 0);
-    public static v3 right = new v3(1, 0, 0);
-    public static v3 forward = new v3(0, 0, 1);
-    public static v3 back = new v3(0, 0, -1);
+    public static float3 up = new float3(0, 1, 0);
+    public static float3 down = new float3(0, -1, 0);
+    public static float3 left = new float3(-1, 0, 0);
+    public static float3 right = new float3(1, 0, 0);
+    public static float3 forward = new float3(0, 0, 1);
+    public static float3 back = new float3(0, 0, -1);
 
-    public static v3 ruf = v3Normalize(new v3(1, 1, 1));
-    public static v3 rub = v3Normalize(new v3(1, 1, -1));
-    public static v3 rdf = v3Normalize(new v3(1, -1, 1));
-    public static v3 rdb = v3Normalize(new v3(1, -1, -1));
-    public static v3 luf = v3Normalize(new v3(-1, 1, 1));
-    public static v3 lub = v3Normalize(new v3(-1, 1, -1));
-    public static v3 ldf = v3Normalize(new v3(-1, -1, 1));
-    public static v3 ldb = v3Normalize(new v3(-1, -1, -1));
+    public static float3 ruf = Float3Normalize(new float3(1, 1, 1));
+    public static float3 rub = Float3Normalize(new float3(1, 1, -1));
+    public static float3 rdf = Float3Normalize(new float3(1, -1, 1));
+    public static float3 rdb = Float3Normalize(new float3(1, -1, -1));
+    public static float3 luf = Float3Normalize(new float3(-1, 1, 1));
+    public static float3 lub = Float3Normalize(new float3(-1, 1, -1));
+    public static float3 ldf = Float3Normalize(new float3(-1, -1, 1));
+    public static float3 ldb = Float3Normalize(new float3(-1, -1, -1));
 
-    [BurstCompile(CompileSynchronously = true, Debug = false, DisableSafetyChecks = true, FloatMode =FloatMode.Fast, FloatPrecision =FloatPrecision.Low)]
+    //[BurstCompile(CompileSynchronously = true, Debug = false, DisableSafetyChecks = true, FloatMode =FloatMode.Fast, FloatPrecision =FloatPrecision.Low)]
     private struct RaycastJob : IJob
     {
-        public v3 start;
-        public v3 dir;
+        public float3 start;
+        public float3 dir;
         public float maxDist;
         public NativeArray<raycast_result> hitRes;
         public world gameWorld;
@@ -114,8 +95,7 @@ public class game : MonoBehaviour
     private void Start()
     {
         mainCam = Camera.main;
-        gameWorld = new world(30000);
-        renderObjs = new render_obj[gameWorld.maxEntities];
+        gameWorld = new world(100);
 
 #if true
 
@@ -123,12 +103,12 @@ public class game : MonoBehaviour
 
         raycast_result hitResult;
         System.Diagnostics.Stopwatch sw = System.Diagnostics.Stopwatch.StartNew();
-        FastRaycast(ref gameWorld, new v3(50, 0, -50), forward, 10000, out hitResult);
+        FastRaycast(ref gameWorld, new float3(50, 0, -50), forward, 10000, out hitResult);
         sw.Stop();
         Debug.Log($"Raycast took {sw.ElapsedMilliseconds}ms and hit {hitResult.hitPos.x}, {hitResult.hitPos.y}, {hitResult.hitPos.z}");
 #endif 
 
-#if true
+#if false
         SpawnLotsOfGameObjects(gameWorld.maxEntities);
         System.Diagnostics.Stopwatch sw2 = System.Diagnostics.Stopwatch.StartNew();
         Physics.Raycast(new Vector3(50, 0, -5), Vector3.forward, 10000);
@@ -137,23 +117,42 @@ public class game : MonoBehaviour
 #endif 
 
 #if false
-        RayCastAlongSphere(ref gameWorld, new v3(0, 0, 0), 20f);
+        RayCastAlongSphere(ref gameWorld, new float3(0, 0, 0), 20f);
 #endif
 #if false
         BoundsTests(ref test);
 #endif
 
 #if false
-        v3CreationTests();
+        float3CreationTests();
+#endif
+#if false
+        ProjectionTests();
 #endif
     }
 
     private void Update()
     {
-        /*for (int i = 0; i < gameWorld.entityCount; ++i)
+        Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+        float3 dir = ray.direction;
+        float3 pos = ray.origin;
+        raycast_result result;
+        if(Input.GetKeyDown(KeyCode.Mouse0))
         {
-            Graphics.DrawMesh(renderObjs[i].mesh, v3ToVector3(gameWorld.entities[i].position), Quaternion.identity, renderObjs[i].mat, 1, mainCam);
-        }*/
+            System.Diagnostics.Stopwatch sw = System.Diagnostics.Stopwatch.StartNew();
+            FastRaycast(ref gameWorld, pos, dir, 1000, out result);
+            sw.Stop();
+            Debug.Log($"Raycast took {sw.ElapsedMilliseconds}ms and hit {result.hitPos.x}, {result.hitPos.y}, {result.hitPos.z}");
+            GameObject go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            go.transform.localScale = new Vector3(.35f, .25f, .25f);
+            go.transform.position = result.hitPos;
+            Debug.DrawLine(pos, result.hitPos, new Color32(122, 0, 122, 255), 10000);
+        }
+
+        for (int i = 0; i < gameWorld.entityCount; ++i)
+        {
+            Graphics.DrawMesh(boxMesh, gameWorld.entities[i].position, Quaternion.identity, material, 1, mainCam);
+        }
     }
 
     private void SpawnLotsOfGameObjects(int _spawnCount)
@@ -185,11 +184,8 @@ public class game : MonoBehaviour
         {
             for (int x = 0; x < dimSizeX; ++x)
             {
-                render_obj ro = new render_obj();
-                ro.mesh = boxMesh;
-                ro.mat = material;
-                entity curr = CreateCubePrimative(new v3(x + paddingX, y + paddingY, 0));
-                AddEntityToWorld(ref _w, ref curr, ref renderObjs, ref ro);
+                entity curr = CreateCubePrimative(new float3(x + paddingX, y + paddingY, 0));
+                AddEntityToWorld(ref _w, ref curr);
                 paddingX += .25f;
             }
             paddingY += .25f;
@@ -197,7 +193,7 @@ public class game : MonoBehaviour
         }
     }
 
-    private static void RayCastAlongSphere(ref world _w, v3 _origin, float _radius)
+    private static void RayCastAlongSphere(ref world _w, float3 _origin, float _radius)
     {
         System.Diagnostics.Stopwatch sw = System.Diagnostics.Stopwatch.StartNew();
         float diameter = _radius * 2;
@@ -218,18 +214,18 @@ public class game : MonoBehaviour
             {
                 float x = Mathf.Sin(c) * ratio;
                 float z = Mathf.Cos(c) * ratio;
-                v3 start = new v3(x, y, z);
-                start = v3Normalize(start);
-                start = v3Mul(start, _radius);
-                v3 dir = v3Normalize(v3Substractv3(new v3(0, 0, 0), start));
+                float3 start = new float3(x, y, z);
+                start = Float3Normalize(start);
+                start = start * _radius;
+                float3 dir = Float3Normalize(new float3(0, 0, 0) - start);
                 if (FastRaycast(ref _w, start, dir, _radius, out hitResult))
                 {
                     raycast_result result2;
-                    v3 newStart = v3Addv3(start, v3FromDirAndMag(start, v3Mul(dir, 1f), _radius*2));
-                    //newStart = v3Addv3(hitResult.hitPos, v3FromDirAndMag(hitResult.hitPos, dir, 1));
-                    if (FastRaycast(ref _w, newStart, v3Mul(dir, 1f), _radius * 2, out result2))
+                    float3 newStart = start + Float3FromDirAndMag(start, dir * 1, _radius * 2);
+                    //newStart = float3Addfloat3(hitResult.hitPos, float3FromDirAndMag(hitResult.hitPos, dir, 1));
+                    if (FastRaycast(ref _w, newStart, dir* 1, _radius * 2, out result2))
                     {
-                        Debug.DrawLine(v3ToVector3(hitResult.hitPos), v3ToVector3(result2.hitPos), Color.green, Mathf.Infinity);
+                        Debug.DrawLine(hitResult.hitPos, result2.hitPos, Color.green, Mathf.Infinity);
                     }
                     count++;
                 }
@@ -242,71 +238,88 @@ public class game : MonoBehaviour
 
     private static void BoundsTests(ref entity _e)
     {
-        Debug.Assert(IsInside(_e.bounds, new v3(0, 0, 0)));
-        Debug.Assert(IsInside(_e.bounds, new v3(.5f, .5f, .5f)));
-        Debug.Assert(IsInside(_e.bounds, new v3(-.5f, -.5f, -.5f)));
-        Debug.Assert(!IsInside(_e.bounds, new v3(1, 1, 1)));
-        Debug.Assert(!IsInside(_e.bounds, new v3(-1, -1, -1)));
-        Debug.Assert(!IsInside(_e.bounds, new v3(2, 2, 2)));
-        Debug.Assert(!IsInside(_e.bounds, new v3(-2, -2, -2)));
+        Debug.Assert(IsInside(_e.bounds, new float3(0, 0, 0)));
+        Debug.Assert(IsInside(_e.bounds, new float3(.5f, .5f, .5f)));
+        Debug.Assert(IsInside(_e.bounds, new float3(-.5f, -.5f, -.5f)));
+        Debug.Assert(!IsInside(_e.bounds, new float3(1, 1, 1)));
+        Debug.Assert(!IsInside(_e.bounds, new float3(-1, -1, -1)));
+        Debug.Assert(!IsInside(_e.bounds, new float3(2, 2, 2)));
+        Debug.Assert(!IsInside(_e.bounds, new float3(-2, -2, -2)));
     }
 
-    private static void v3CreationTests()
+    private static void float3CreationTests()
     {
 #if false
-        v3 a = v3FromDirAndMag(new v3(0,0,0), up, 1f);
-        v3 b = v3FromDirAndMag(new v3(0,0,0), down, 1f);
-        v3 c = v3FromDirAndMag(new v3(0,0,0), left, 1f);
-        v3 d = v3FromDirAndMag(new v3(0,0,0), right, 1f);
-        v3 e = v3FromDirAndMag(new v3(0,0,0), forward, 1f);
-        v3 f = v3FromDirAndMag(new v3(0,0,0), back, 1f);
+        float3 a = Float3FromDirAndMag(new float3(0,0,0), up, 1f);
+        float3 b = Float3FromDirAndMag(new float3(0,0,0), down, 2f);
+        float3 c = Float3FromDirAndMag(new float3(0,0,0), left, 3f);
+        float3 d = Float3FromDirAndMag(new float3(0,0,0), right, 4f);
+        float3 e = Float3FromDirAndMag(new float3(0,0,0), forward, 5f);
+        float3 f = Float3FromDirAndMag(new float3(0,0,0), back, 6f);
 
-        Debug.DrawLine(new Vector3(0, 0, 0), v3ToVector3(a), Color.red, Mathf.Infinity);
-        Debug.DrawLine(new Vector3(0, 0, 0), v3ToVector3(b), Color.green, Mathf.Infinity);
-        Debug.DrawLine(new Vector3(0, 0, 0), v3ToVector3(c), Color.blue, Mathf.Infinity);
-        Debug.DrawLine(new Vector3(0, 0, 0), v3ToVector3(d), Color.magenta, Mathf.Infinity);
-        Debug.DrawLine(new Vector3(0, 0, 0), v3ToVector3(e), Color.yellow, Mathf.Infinity);
-        Debug.DrawLine(new Vector3(0, 0, 0), v3ToVector3(f), Color.black, Mathf.Infinity);
+        Debug.DrawLine(new Vector3(0, 0, 0), a, Color.red, Mathf.Infinity);
+        Debug.DrawLine(new Vector3(0, 0, 0), b, Color.green, Mathf.Infinity);
+        Debug.DrawLine(new Vector3(0, 0, 0), c, Color.blue, Mathf.Infinity);
+        Debug.DrawLine(new Vector3(0, 0, 0), d, Color.magenta, Mathf.Infinity);
+        Debug.DrawLine(new Vector3(0, 0, 0), e, Color.yellow, Mathf.Infinity);
+        Debug.DrawLine(new Vector3(0, 0, 0), f, Color.black, Mathf.Infinity);
+
 #else
-        v3 a = v3FromDirAndMag(new v3(0, 0, 0), ruf, 1f);
-        v3 b = v3FromDirAndMag(new v3(0, 0, 0), rub, 1f);
-        v3 c = v3FromDirAndMag(new v3(0, 0, 0), rdf, 1f);
-        v3 d = v3FromDirAndMag(new v3(0, 0, 0), rdb, 1f);
-        v3 e = v3FromDirAndMag(new v3(0, 0, 0), luf, 1f);
-        v3 f = v3FromDirAndMag(new v3(0, 0, 0), lub, 1f);
-        v3 g = v3FromDirAndMag(new v3(0, 0, 0), ldf, 1f);
-        v3 h = v3FromDirAndMag(new v3(0, 0, 0), ldb, 1f);
+        float3 a = Float3FromDirAndMag(new float3(0, 0, 0), ruf, 1f);
+        float3 b = Float3FromDirAndMag(new float3(0, 0, 0), rub, 2f);
+        float3 c = Float3FromDirAndMag(new float3(0, 0, 0), rdf, 3f);
+        float3 d = Float3FromDirAndMag(new float3(0, 0, 0), rdb, 4f);
+        float3 e = Float3FromDirAndMag(new float3(0, 0, 0), luf, 5f);
+        float3 f = Float3FromDirAndMag(new float3(0, 0, 0), lub, 6f);
+        float3 g = Float3FromDirAndMag(new float3(0, 0, 0), ldf, 7f);
+        float3 h = Float3FromDirAndMag(new float3(0, 0, 0), ldb, 8f);
 
-        Debug.DrawLine(new Vector3(0, 0, 0), v3ToVector3(a), Color.red, Mathf.Infinity);
-        Debug.DrawLine(new Vector3(0, 0, 0), v3ToVector3(b), Color.green, Mathf.Infinity);
-        Debug.DrawLine(new Vector3(0, 0, 0), v3ToVector3(c), Color.blue, Mathf.Infinity);
-        Debug.DrawLine(new Vector3(0, 0, 0), v3ToVector3(d), Color.magenta, Mathf.Infinity);
-        Debug.DrawLine(new Vector3(0, 0, 0), v3ToVector3(e), Color.yellow, Mathf.Infinity);
-        Debug.DrawLine(new Vector3(0, 0, 0), v3ToVector3(f), Color.black, Mathf.Infinity);
-        Debug.DrawLine(new Vector3(0, 0, 0), v3ToVector3(g), Color.white, Mathf.Infinity);
-        Debug.DrawLine(new Vector3(0, 0, 0), v3ToVector3(h), Color.gray, Mathf.Infinity);
+        Debug.DrawLine(new Vector3(0, 0, 0), a, Color.red, Mathf.Infinity);
+        Debug.DrawLine(new Vector3(0, 0, 0), b, Color.green, Mathf.Infinity);
+        Debug.DrawLine(new Vector3(0, 0, 0), c, Color.blue, Mathf.Infinity);
+        Debug.DrawLine(new Vector3(0, 0, 0), d, Color.magenta, Mathf.Infinity);
+        Debug.DrawLine(new Vector3(0, 0, 0), e, Color.yellow, Mathf.Infinity);
+        Debug.DrawLine(new Vector3(0, 0, 0), f, Color.black, Mathf.Infinity);
+        Debug.DrawLine(new Vector3(0, 0, 0), g, Color.white, Mathf.Infinity);
+        Debug.DrawLine(new Vector3(0, 0, 0), h, Color.gray, Mathf.Infinity);
 #endif
     }
 
-    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
-    [System.Diagnostics.Contracts.Pure]
-    public static Vector3 v3ToVector3(v3 _v)
+    private void ProjectionTests()
     {
-        Vector3 result = new Vector3(_v.x, _v.y, _v.z);
-        return result;
+        float3 rayCast = Float3FromDirAndMag(new float3(0, 0, 0), ruf, 10000f);
+        Debug.DrawLine(new Vector3(0, 0, 0), rayCast, Color.white, Mathf.Infinity);
+
+        float3 a = Float3FromDirAndMag(new float3(0, 0, 0), ruf, 1f);
+        float3 b = Float3FromDirAndMag(new float3(0, 0, 0), rub, 2f);
+        float3 c = Float3FromDirAndMag(new float3(0, 0, 0), rdf, 3f);
+        float3 d = Float3FromDirAndMag(new float3(0, 0, 0), rdb, 4f);
+        float3 e = Float3FromDirAndMag(new float3(0, 0, 0), luf, 5f);
+        float3 f = Float3FromDirAndMag(new float3(0, 0, 0), lub, 6f);
+        float3 g = Float3FromDirAndMag(new float3(0, 0, 0), ldf, 7f);
+        float3 h = Float3FromDirAndMag(new float3(0, 0, 0), ldb, 8f);
+
+        DebugProjectOntoRay(rayCast, a, Color.red);
+        DebugProjectOntoRay(rayCast, b, Color.blue);
+        DebugProjectOntoRay(rayCast, c, Color.magenta);
+        DebugProjectOntoRay(rayCast, d, Color.grey);
+        DebugProjectOntoRay(rayCast, e, Color.yellow);
+        DebugProjectOntoRay(rayCast, f, Color.cyan);
+        DebugProjectOntoRay(rayCast, g, new Color32(122, 0, 122, 255));
+        DebugProjectOntoRay(rayCast, h, new Color32(255, 165, 0, 255));
+    }
+
+    private void DebugProjectOntoRay(float3 raycast, float3 other, Color _col)
+    {
+        Debug.DrawLine(new Vector3(0, 0, 0), other, _col, Mathf.Infinity);
+        float3 proj = Float3Projection(raycast, other);
+        Debug.DrawLine(new Vector3(0, 0, 0), proj, Color.black, Mathf.Infinity);
+        Debug.DrawLine(other, proj, Color.green, Mathf.Infinity);
     }
 
     [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
     [System.Diagnostics.Contracts.Pure]
-    public static v3 Vector3Tov3(Vector3 _v)
-    {
-        v3 result = new v3(_v.x, _v.y, _v.z);
-        return result;
-    }
-
-    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
-    [System.Diagnostics.Contracts.Pure]
-    public static bool IsInside(bounds _b, v3 _pos)
+    public static bool IsInside(bounds _b, float3 _pos)
     {
         return (_b.maxPoints.x > _pos.x && _b.maxPoints.y > _pos.y && _b.maxPoints.z > _pos.z)
             && (_b.minPoints.x < _pos.x && _b.minPoints.y < _pos.y && _b.minPoints.z < _pos.z);
@@ -321,54 +334,24 @@ public class game : MonoBehaviour
             && (_a.minPoints.z <= _b.maxPoints.z && _a.maxPoints.z >= _b.minPoints.z);
     }
 
-
-    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
-    [System.Diagnostics.Contracts.Pure]
-    public static v3 v3Addv3(v3 _a, v3 _b)
+    public static float Float3DotProd(float3 _a, float3 _b)
     {
-        v3 result = _a;
-        result.x += _b.x;
-        result.y += _b.y;
-        result.z += _b.z;
+        float result = _a.x * _b.x + _a.y * _b.y + _a.z * _b.z;
+        return result;
+    }
+
+    public static float3 Float3Projection(float3 _a, float3 _b)
+    {
+        float aMag = Float3Mag(_a);
+        float scale = Float3DotProd(_a, _b) / aMag;
+
+        float3 result = scale * (aMag / aMag);
         return result;
     }
 
     [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
     [System.Diagnostics.Contracts.Pure]
-    public static v3 v3Substractv3(v3 _a, v3 _b)
-    {
-        v3 result = _a;
-        result.x -= _b.x;
-        result.y -= _b.y;
-        result.z -= _b.z;
-        return result;
-    }
-
-    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
-    [System.Diagnostics.Contracts.Pure]
-    public static v3 v3Mul(v3 _a, float _b)
-    {
-        v3 result = _a;
-        result.x *= _b;
-        result.y *= _b;
-        result.z *= _b;
-        return result;
-    }
-
-    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
-    [System.Diagnostics.Contracts.Pure]
-    public static v3 v3Div(v3 _a, float _b)
-    {
-        v3 result = _a;
-        result.x /= _b;
-        result.y /= _b;
-        result.z /= _b;
-        return result;
-    }
-
-    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
-    [System.Diagnostics.Contracts.Pure]
-    public static float v3Mag(v3 _v)
+    public static float Float3Mag(float3 _v)
     {
         float result = Mathf.Sqrt(_v.x * _v.x + _v.y * _v.y + _v.z * _v.z);
         return result;
@@ -376,10 +359,10 @@ public class game : MonoBehaviour
 
 
     [System.Diagnostics.Contracts.Pure]
-    public static v3 v3Normalize(v3 _v)
+    public static float3 Float3Normalize(float3 _v)
     {
-        v3 result = _v;
-        float mag = v3Mag(_v);
+        float3 result = _v;
+        float mag = Float3Mag(_v);
         result.x /= mag;
         result.y /= mag;
         result.z /= mag;
@@ -387,41 +370,49 @@ public class game : MonoBehaviour
     }
 
     [System.Diagnostics.Contracts.Pure]
-    public static v3 v3FromDirAndMag(v3 _start, v3 _dir, float _mag)
+    public static float3 Float3FromDirAndMag(float3 _start, float3 _dir, float _mag)
     {
-        v3 result = _dir;
-        result = v3Normalize(result);
+        float3 result = _dir;
+        result = Float3Normalize(result);
         result.x *= _mag;
         result.y *= _mag;
         result.z *= _mag;
-        result = v3Addv3(_start, result);
+        result = _start + result;
         return result;
     }
 
     [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
     [System.Diagnostics.Contracts.Pure]
-    public static bool v3Equality(v3 _a, v3 _b)
+    public static bool Float3Equality(float3 _a, float3 _b)
     {
         return _a.x == _b.x && _a.y == _b.y && _a.z == _b.z;
     }
 
-    public static bool FastRaycast(ref world _world, v3 _start, v3 _dir, float _maxDist, out raycast_result _hitResult)
+    public static bool FastRaycast(ref world _world, float3 _start, float3 _dir, float _maxDist, out raycast_result _hitResult)
     {
+        raycast_result hitResults;
+        RayCast(_world, _start, _dir, _maxDist, out hitResults);
+#if false
         NativeArray<raycast_result> hitResults = new NativeArray<raycast_result>(1, Allocator.TempJob);
         var runMyJob = new RaycastJob { gameWorld = _world, start = _start, dir = _dir, maxDist = _maxDist, hitRes = hitResults };
         runMyJob.Run();
         _hitResult = runMyJob.hitRes[0];
         hitResults.Dispose();
+
         return _hitResult.didHit;
+#else
+        _hitResult = hitResults;
+        return hitResults.didHit;
+#endif
     }
 
     [System.Diagnostics.Contracts.Pure]
-    public static bool SlowRayCast(world _world, v3 _start, v3 _dir, float _maxDist, out raycast_result _hitResult)
+    public static bool SlowRayCast(world _world, float3 _start, float3 _dir, float _maxDist, out raycast_result _hitResult)
     {
-        v3 finalPos = v3FromDirAndMag(_start, _dir, _maxDist);
+        float3 finalPos = Float3FromDirAndMag(_start, _dir, _maxDist);
         _hitResult = new raycast_result();
 
-        v3 checkPos = _start;
+        float3 checkPos = _start;
         float stepDelta = .1f;
         float currStep = stepDelta;
         while (currStep < _maxDist)
@@ -438,16 +429,17 @@ public class game : MonoBehaviour
                     return true;
                 }
             }
-            checkPos = v3FromDirAndMag(_start, _dir, currStep);
+            checkPos = Float3FromDirAndMag(_start, _dir, currStep);
             currStep += stepDelta;
         }
         return false;
     }
 
-    public static bool RayCast(world _world, v3 _start, v3 _dir, float _maxDist, out raycast_result _hitResult)
+    public static bool RayCast(world _world, float3 _start, float3 _dir, float _maxDist, out raycast_result _hitResult)
     {
         _hitResult = new raycast_result();
-        v3 finalPos = v3FromDirAndMag(_start, _dir, _maxDist);
+        float3 finalPos = Float3FromDirAndMag(_start, _dir, _maxDist);
+        _hitResult.hitPos = finalPos;
         bounds raycastAABB = new bounds();
 
         raycastAABB.maxPoints.x = finalPos.x;
@@ -472,38 +464,38 @@ public class game : MonoBehaviour
             raycastAABB.maxPoints.z = _start.z;
             raycastAABB.minPoints.z = finalPos.z;
         }
-
-        float closestSqrDistance = 100000000;
-        int closestIndex = -1;
-        NativeArray<int> entitiesInsideBB = new NativeArray<int>(_world.entityCount, Allocator.Temp, NativeArrayOptions.UninitializedMemory);
-        //int[] entitiesInsideBB = new int[_world.entityCount];
-        int count = 0;
+        
+        //NativeArray<int> entitiesInsideBB = new NativeArray<int>(_world.entityCount, Allocator.Temp, NativeArrayOptions.UninitializedMemory);
+        //int count = 0;
         for (int entityIndex = 0;
                 entityIndex < _world.entityCount;
                 ++entityIndex)
         {
-            if(AABBOverlap(raycastAABB, _world.entities[entityIndex].bounds))
+            entity e = _world.entities[entityIndex];
+            if(AABBOverlap(raycastAABB, e.bounds))
             {
-                v3 pos = _world.entities[entityIndex].position;
-                float a = _start.x - pos.x;
-                a *= a;
-                float b = _start.y - pos.y;
-                b *= b;
-                float c = _start.z - pos.z;
-                c *= c;
-                float sqrDist = a + b + c;
-                if(sqrDist < closestSqrDistance)
+                float3 proj = Float3Projection(finalPos, e.position);
+                Debug.DrawLine(_start, finalPos, Color.red, Mathf.Infinity);
+                Debug.DrawLine(_start, proj, Color.white, Mathf.Infinity);
+                Debug.DrawLine(e.position, proj, Color.green, Mathf.Infinity);
+
+                float magProj = Float3Mag(proj);
+                if (IsInside(e.bounds, proj))
                 {
-                    closestSqrDistance = sqrDist;
-                    closestIndex = entityIndex;
-                    entitiesInsideBB[count++] = entityIndex;
+                    if(Float3Mag(_hitResult.hitPos) > magProj)
+                    {
+                        _hitResult.didHit = true;
+                        _hitResult.hitEntity = e;
+                        //TODO(chris):Figure out if we need more precision here, we can back out until hitting the surface
+                        _hitResult.hitPos = proj;
+                    }
                 }
             }
         }
 
-        v3 checkPos = v3FromDirAndMag(_start, _dir, Mathf.Sqrt(closestSqrDistance) - 1);
-        float stepDelta = .1f;
+        /*float stepDelta = .1f;
         float currStep = stepDelta;
+        float3 checkPos = Float3FromDirAndMag(_start, _dir, currStep);
         while (currStep < _maxDist)
         {
             for (int entityIndex = 0;
@@ -520,14 +512,14 @@ public class game : MonoBehaviour
                     return true;
                 }
             }
-            checkPos = v3FromDirAndMag(_start, _dir, currStep);
+            checkPos = Float3FromDirAndMag(_start, _dir, currStep);
             currStep += stepDelta;
-        }
-        entitiesInsideBB.Dispose();
-        return false;
+        }*/
+        //entitiesInsideBB.Dispose();
+        return _hitResult.didHit;
     }
 
-    public static void AddEntityToWorld(ref world _w, ref entity _e, ref render_obj[] _ros, ref render_obj _ro)
+    public static void AddEntityToWorld(ref world _w, ref entity _e)
     {
         if(_w.entityCount -1 == _w.maxEntities)
         {
@@ -538,19 +530,16 @@ public class game : MonoBehaviour
             _w.entities = new NativeArray<entity>(_w.maxEntities, Allocator.Persistent, NativeArrayOptions.ClearMemory);
             NativeArray<entity>.Copy(tmp, _w.entities);
             tmp.Dispose();
-
-            System.Array.Resize<render_obj>(ref _ros, _w.maxEntities);
         }
-        _ros[_w.entityCount] = _ro;
         _w.entities[_w.entityCount++] = _e;
     }
 
     [System.Diagnostics.Contracts.Pure]
-    public static entity CreateCubePrimative(v3 _origin)
+    public static entity CreateCubePrimative(float3 _origin)
     {
         entity result = new entity();
         result.position = _origin;
-        result.scale = new global::v3(1,1,1);
+        result.scale = new float3(1,1,1);
         float minX = result.position.x - result.scale.x;
         float maxX = result.position.x + result.scale.x;
 
@@ -560,8 +549,8 @@ public class game : MonoBehaviour
         float minZ = result.position.z - result.scale.z;
         float maxZ = result.position.z + result.scale.z;
 
-        result.bounds.minPoints = new v3(minX, minY, minZ);
-        result.bounds.maxPoints = new v3(maxX, maxY, maxZ);
+        result.bounds.minPoints = new float3(minX, minY, minZ);
+        result.bounds.maxPoints = new float3(maxX, maxY, maxZ);
         return result;
     }
 }
