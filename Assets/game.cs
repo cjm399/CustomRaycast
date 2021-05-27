@@ -32,7 +32,7 @@ public struct world
 {
     public NativeArray<entity> entities;
     public int entityCount, maxEntities;
-    public static int VOXEL_SIZE = 50;
+    public static int VOXEL_SIZE = 10;
 
     public world(int _maxEntities)
     {
@@ -95,17 +95,25 @@ public class game : MonoBehaviour
     private void Start()
     {
         mainCam = Camera.main;
-        gameWorld = new world(100);
+        gameWorld = new world(30000);
 
 #if true
-
         SpawnLotsOfCubes(ref gameWorld, gameWorld.maxEntities);
 
         raycast_result hitResult;
+        float3 start = new float3(50, 0, -50);
         System.Diagnostics.Stopwatch sw = System.Diagnostics.Stopwatch.StartNew();
-        FastRaycast(ref gameWorld, new float3(50, 0, -50), forward, 10000, out hitResult);
+        //FastRaycast(ref gameWorld, new float3(50, 0, -50), forward, 10000, out hitResult);
+        bounds raycastAABB = MakeBoundsFromVector(start, Float3FromDirAndMag(start, forward, 10000));
+        int2[] voxels = GetVoxels(world.VOXEL_SIZE, raycastAABB);
+        foreach(int2 set in voxels)
+        {
+            GameObject go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            go.transform.position = new Vector3(set.x*10, 1f, set.y*10);
+        }
+        //int2 vx = GetVoxel(world.VOXEL_SIZE, start);
         sw.Stop();
-        Debug.Log($"Raycast took {sw.ElapsedMilliseconds}ms and hit {hitResult.hitPos.x}, {hitResult.hitPos.y}, {hitResult.hitPos.z}");
+        Debug.Log($"Raycast took {sw.ElapsedMilliseconds}ms");
 #endif 
 
 #if false
@@ -137,7 +145,7 @@ public class game : MonoBehaviour
         float3 dir = ray.direction;
         float3 pos = ray.origin;
         raycast_result result;
-        if(Input.GetKeyDown(KeyCode.Mouse0))
+        if(Input.GetKeyDown(KeyCode.Mouse1))
         {
             System.Diagnostics.Stopwatch sw = System.Diagnostics.Stopwatch.StartNew();
             FastRaycast(ref gameWorld, pos, dir, 1000, out result);
@@ -184,7 +192,7 @@ public class game : MonoBehaviour
         {
             for (int x = 0; x < dimSizeX; ++x)
             {
-                entity curr = CreateCubePrimative(new float3(x + paddingX, y + paddingY, 0));
+                entity curr = CreateCubePrimative(new float3(x + paddingX, 0, y + paddingY));
                 AddEntityToWorld(ref _w, ref curr);
                 paddingX += .25f;
             }
@@ -287,8 +295,10 @@ public class game : MonoBehaviour
 
     private void ProjectionTests()
     {
-        float3 rayCast = Float3FromDirAndMag(new float3(0, 0, 0), ruf, 10000f);
-        Debug.DrawLine(new Vector3(0, 0, 0), rayCast, Color.white, Mathf.Infinity);
+        float3 start = new float3(10, 0, 0);
+        float3 end = Float3FromDirAndMag(start, ruf, 10000f);
+        float3 rayCast = start - end;
+        Debug.DrawLine(start, end, Color.white, Mathf.Infinity);
 
         float3 a = Float3FromDirAndMag(new float3(0, 0, 0), ruf, 1f);
         float3 b = Float3FromDirAndMag(new float3(0, 0, 0), rub, 2f);
@@ -299,21 +309,21 @@ public class game : MonoBehaviour
         float3 g = Float3FromDirAndMag(new float3(0, 0, 0), ldf, 7f);
         float3 h = Float3FromDirAndMag(new float3(0, 0, 0), ldb, 8f);
 
-        DebugProjectOntoRay(rayCast, a, Color.red);
-        DebugProjectOntoRay(rayCast, b, Color.blue);
-        DebugProjectOntoRay(rayCast, c, Color.magenta);
-        DebugProjectOntoRay(rayCast, d, Color.grey);
-        DebugProjectOntoRay(rayCast, e, Color.yellow);
-        DebugProjectOntoRay(rayCast, f, Color.cyan);
-        DebugProjectOntoRay(rayCast, g, new Color32(122, 0, 122, 255));
-        DebugProjectOntoRay(rayCast, h, new Color32(255, 165, 0, 255));
+        
+        DebugProjectOntoRay(rayCast, a, Color.red, start);
+        DebugProjectOntoRay(rayCast, b, Color.blue, start);
+        DebugProjectOntoRay(rayCast, c, Color.magenta, start);
+        DebugProjectOntoRay(rayCast, d, Color.grey, start);
+        DebugProjectOntoRay(rayCast, e, Color.yellow, start);
+        DebugProjectOntoRay(rayCast, f, Color.cyan, start);
+        DebugProjectOntoRay(rayCast, g, new Color32(122, 0, 122, 255), start);
+        DebugProjectOntoRay(rayCast, h, new Color32(255, 165, 0, 255), start);
     }
 
-    private void DebugProjectOntoRay(float3 raycast, float3 other, Color _col)
+    private void DebugProjectOntoRay(float3 raycast, float3 other, Color _col, float3 _offset)
     {
         Debug.DrawLine(new Vector3(0, 0, 0), other, _col, Mathf.Infinity);
         float3 proj = Float3Projection(raycast, other);
-        Debug.DrawLine(new Vector3(0, 0, 0), proj, Color.black, Mathf.Infinity);
         Debug.DrawLine(other, proj, Color.green, Mathf.Infinity);
     }
 
@@ -435,36 +445,41 @@ public class game : MonoBehaviour
         return false;
     }
 
+    public static bounds MakeBoundsFromVector(float3 _start, float3 _end)
+    {
+        bounds result = new bounds();
+        result.maxPoints.x = _end.x;
+        result.minPoints.x = _start.x;
+        result.maxPoints.y = _end.y;
+        result.minPoints.y = _start.y;
+        result.maxPoints.z = _end.z;
+        result.minPoints.z = _start.z;
+
+        if (_start.x > _end.x)
+        {
+            result.maxPoints.x = _start.x;
+            result.minPoints.x = _end.x;
+        }
+        if (_start.y > _end.y)
+        {
+            result.maxPoints.y = _start.y;
+            result.minPoints.y = _end.y;
+        }
+        if (_start.z > _end.z)
+        {
+            result.maxPoints.z = _start.z;
+            result.minPoints.z = _end.z;
+        }
+        return result;
+    }
+
     public static bool RayCast(world _world, float3 _start, float3 _dir, float _maxDist, out raycast_result _hitResult)
     {
         _hitResult = new raycast_result();
         float3 finalPos = Float3FromDirAndMag(_start, _dir, _maxDist);
         _hitResult.hitPos = finalPos;
-        bounds raycastAABB = new bounds();
+        bounds raycastAABB = MakeBoundsFromVector(_start, finalPos);
 
-        raycastAABB.maxPoints.x = finalPos.x;
-        raycastAABB.minPoints.x = _start.x;
-        raycastAABB.maxPoints.y = finalPos.y;
-        raycastAABB.minPoints.y = _start.y;
-        raycastAABB.maxPoints.z = finalPos.z;
-        raycastAABB.minPoints.z = _start.z;
-
-        if (_start.x > finalPos.x)
-        {
-            raycastAABB.maxPoints.x = _start.x;
-            raycastAABB.minPoints.x = finalPos.x;
-        }
-        if (_start.y > finalPos.y)
-        {
-            raycastAABB.maxPoints.y = _start.y;
-            raycastAABB.minPoints.y = finalPos.y;
-        }
-        if (_start.z > finalPos.z)
-        {
-            raycastAABB.maxPoints.z = _start.z;
-            raycastAABB.minPoints.z = finalPos.z;
-        }
-        
         //NativeArray<int> entitiesInsideBB = new NativeArray<int>(_world.entityCount, Allocator.Temp, NativeArrayOptions.UninitializedMemory);
         //int count = 0;
         for (int entityIndex = 0;
@@ -526,7 +541,7 @@ public class game : MonoBehaviour
             _w.maxEntities *= 2;
             NativeArray<entity> tmp = new NativeArray<entity>(_w.maxEntities, Allocator.Temp, NativeArrayOptions.ClearMemory);
             NativeArray<entity>.Copy(_w.entities, tmp);
-            _w.entities.Dispose();
+            _w.entities.Dispose(); 
             _w.entities = new NativeArray<entity>(_w.maxEntities, Allocator.Persistent, NativeArrayOptions.ClearMemory);
             NativeArray<entity>.Copy(tmp, _w.entities);
             tmp.Dispose();
@@ -551,6 +566,36 @@ public class game : MonoBehaviour
 
         result.bounds.minPoints = new float3(minX, minY, minZ);
         result.bounds.maxPoints = new float3(maxX, maxY, maxZ);
+        return result;
+    }
+
+    [System.Diagnostics.Contracts.Pure]
+    public static int2[] GetVoxels(int _voxelSize, bounds _b)
+    {
+        int x1 = Mathf.FloorToInt(_b.maxPoints.x);
+        int z1 = Mathf.FloorToInt(_b.maxPoints.z);
+        int x2 = Mathf.FloorToInt(_b.minPoints.x);
+        int z2 = Mathf.FloorToInt(_b.minPoints.z);
+
+        int xDim = x1 - x2 + 1;
+        int zDim = z1 - z2 + 1;
+
+        int2[] result = new int2[xDim*zDim];
+        for(int i = 0; i < xDim; ++i)
+        {
+            for(int j = 0; j < zDim; ++j)
+            {
+                result[(zDim * i) + j] = new int2(xDim, zDim);
+            }
+        }
+        return result;
+    }
+
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+    [System.Diagnostics.Contracts.Pure]
+    public static int2 GetVoxel(int _voxelSize, float3 _pos)
+    {
+        int2 result = new int2(Mathf.FloorToInt(_pos.x/_voxelSize), Mathf.FloorToInt(_pos.z/_voxelSize));
         return result;
     }
 }
