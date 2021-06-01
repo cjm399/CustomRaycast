@@ -100,17 +100,20 @@ public class game : MonoBehaviour
 #if true
         SpawnLotsOfCubes(ref gameWorld, gameWorld.maxEntities);
 
-        raycast_result hitResult;
         float3 start = new float3(50, 0, -50);
         System.Diagnostics.Stopwatch sw = System.Diagnostics.Stopwatch.StartNew();
-        //FastRaycast(ref gameWorld, new float3(50, 0, -50), forward, 10000, out hitResult);
+        raycast_result hitResult;
+        FastRaycast(ref gameWorld, new float3(50, 0, -50), forward, 10000, out hitResult);
+
+#if false
         bounds raycastAABB = MakeBoundsFromVector(start, Float3FromDirAndMag(start, forward, 10000));
         int2[] voxels = GetVoxels(world.VOXEL_SIZE, raycastAABB);
-        foreach(int2 set in voxels)
+        foreach (int2 set in voxels)
         {
             GameObject go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            go.transform.position = new Vector3(set.x*10, 1f, set.y*10);
-        }
+            go.transform.position = new Vector3(set.x * 10, 1f, set.y * 10);
+        } 
+#endif
         //int2 vx = GetVoxel(world.VOXEL_SIZE, start);
         sw.Stop();
         Debug.Log($"Raycast took {sw.ElapsedMilliseconds}ms");
