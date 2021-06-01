@@ -67,6 +67,8 @@ public class GenerateBuildings : MonoBehaviour
                 currMesh = new Mesh();
                 verts = new List<Vector3>();
                 triangles = new List<int>();
+                triangles.Clear();
+                verts.Clear();
             }
             //New vert coming in
             else if (function == 'v')
@@ -92,8 +94,8 @@ public class GenerateBuildings : MonoBehaviour
             {
                 string[] points = line.Substring(2).Split(' ');
                 int a = int.Parse(points[0]);
-                int b = int.Parse(points[0]);
-                int c = int.Parse(points[0]);
+                int b = int.Parse(points[1]);
+                int c = int.Parse(points[2]);
                 triangles.AddRange(new int[] { a -1, b -1, c -1 });
             }
         }
