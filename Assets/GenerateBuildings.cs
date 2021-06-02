@@ -8,6 +8,9 @@ public class GenerateBuildings : MonoBehaviour
     public string objFile = "buildings_obj.obj";
     public Mesh mesh;
     public Material mat;
+    public bool shouldRender = true;
+
+    public Vector3 rotation;
 
     private world gameWorld;
 
@@ -43,6 +46,7 @@ public class GenerateBuildings : MonoBehaviour
         List<int> triangles = new List<int>();
         List < entity > entities = new List<entity>();
         bool first = true;
+        int vertexOffset = 0;
         foreach(string line in lines)
         {
             char function = line[0];
@@ -51,10 +55,30 @@ public class GenerateBuildings : MonoBehaviour
             {
                 if(!first)
                 {
-                    entities.Add(curr);
+                    curr.position.x /= verts.Count;
+                    curr.position.z /= verts.Count;
+
+                    for(int i = 0; i < verts.Count; ++i)
+                    {
+                        Vector3 newPos = verts[i];
+                        newPos.x -= curr.position.x;
+                        newPos.y -= curr.position.y;
+                        newPos.z -= curr.position.z;
+                        verts[i] = newPos;
+                    }
+
                     currMesh.SetVertices(verts);
                     currMesh.SetTriangles(triangles, 0);
+                    currMesh.RecalculateNormals();
+                    currMesh.RecalculateBounds();
+                    curr.bounds.minPoints = currMesh.bounds.min;
+                    curr.bounds.maxPoints = currMesh.bounds.max;
+
+                    currMesh = MakeCubeFromBounds(curr.bounds);
+                    currMesh.RecalculateNormals();
+                    entities.Add(curr);
                     meshes.Add(currMesh);
+                    vertexOffset += verts.Count;
                 }
                 else
                 {
@@ -62,11 +86,9 @@ public class GenerateBuildings : MonoBehaviour
                 }
                 int endNameIndex = line.IndexOf("_Mesh");
                 string objName = line.Substring(2, endNameIndex -2);
-                print(objName);
+                //print(objName);
                 curr = new entity();
                 currMesh = new Mesh();
-                verts = new List<Vector3>();
-                triangles = new List<int>();
                 triangles.Clear();
                 verts.Clear();
             }
@@ -86,17 +108,18 @@ public class GenerateBuildings : MonoBehaviour
                 }
                 curr.position.x += x;
                 curr.position.z += z;
-                curr.position.x /= 2.0f;
-                curr.position.z /= 2.0f;
                 verts.Add(new Vector3(x, y, z));
             }
             else if(function == 'f')
             {
                 string[] points = line.Substring(2).Split(' ');
-                int a = int.Parse(points[0]);
-                int b = int.Parse(points[1]);
-                int c = int.Parse(points[2]);
-                triangles.AddRange(new int[] { a -1, b -1, c -1 });
+                //obj vert index starts at 1.
+                int a = int.Parse(points[0]) -1 - vertexOffset;
+                int b = int.Parse(points[1]) -1 - vertexOffset;
+                int c = int.Parse(points[2]) -1 - vertexOffset;
+                triangles.Add(a);
+                triangles.Add(b);
+                triangles.Add(c);
             }
         }
         gameWorld = new world(entities.Count);
@@ -106,6 +129,48 @@ public class GenerateBuildings : MonoBehaviour
             gameWorld.entityCount++;
 
         }
+    }
+
+    public Mesh MakeCubeFromBounds(bounds _b)
+    {
+        Mesh result = new Mesh();
+        List<Vector3> verts = new List<Vector3>();
+        List<int> tris = new List<int>();
+
+        float minx = _b.minPoints.x;
+        float miny = _b.minPoints.y;
+        float minz = _b.minPoints.z;
+        float maxx = _b.maxPoints.x;
+        float maxy = _b.maxPoints.y;
+        float maxz = _b.maxPoints.z;
+
+        verts.Add(new Vector3(minx, miny, minz));
+        verts.Add(new Vector3(minx, miny, maxz));
+        verts.Add(new Vector3(minx, maxy, minz));
+        verts.Add(new Vector3(minx, maxy, maxz));
+        verts.Add(new Vector3(maxx, miny, minz));
+        verts.Add(new Vector3(maxx, miny, maxz));
+        verts.Add(new Vector3(maxx, maxy, minz));
+        verts.Add(new Vector3(maxx, maxy, maxz));
+
+        tris.AddRange(new int[] { 0, 1, 2 });
+        tris.AddRange(new int[] { 1, 3, 2 });
+        tris.AddRange(new int[] { 0, 2, 6 });
+        tris.AddRange(new int[] { 0, 6, 4 });
+        tris.AddRange(new int[] { 4, 6, 7 });
+        tris.AddRange(new int[] { 4, 7, 5 });
+        tris.AddRange(new int[] { 5, 7, 3 });
+        tris.AddRange(new int[] { 5, 3, 1 });
+        tris.AddRange(new int[] { 2, 3, 6 });
+        tris.AddRange(new int[] { 3, 7, 6 });
+        tris.AddRange(new int[] { 0, 4, 5 });
+        tris.AddRange(new int[] { 0, 5, 1 });
+
+        result.SetVertices(verts);
+        result.SetTriangles(tris, 0);
+        result.RecalculateNormals();
+        return result;
+
     }
 
     public bounds SetBounds(ref bounds _b, float _x, float _y, float _z)
@@ -143,9 +208,18 @@ public class GenerateBuildings : MonoBehaviour
 
     private void Update()
     {
-        for(int i = 0; i < gameWorld.entityCount; ++i)
+        /*bounds b = new bounds();
+        b.minPoints = new Unity.Mathematics.float3(-3, 0, 1);
+        b.maxPoints = new Unity.Mathematics.float3(1, 3, 5);
+
+        Mesh mesh = MakeCubeFromBounds(b);
+        Graphics.DrawMesh(mesh, Vector3.zero, Quaternion.Euler(rotation), mat, 1, Camera.main);*/
+        if(shouldRender)
         {
-            Graphics.DrawMesh(meshes[i], gameWorld.entities[i].position, Quaternion.identity, mat, 1, Camera.main);  
+            for (int i = 0; i < gameWorld.entityCount; ++i)
+            {
+                Graphics.DrawMesh(meshes[i], gameWorld.entities[i].position, Quaternion.Euler(rotation), mat, 1, Camera.main);  
+            }
         }
     }
 }
