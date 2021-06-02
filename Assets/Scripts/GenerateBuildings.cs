@@ -6,7 +6,6 @@ using System.IO;
 public class GenerateBuildings : MonoBehaviour
 {
     public string objFile = "buildings_obj.obj";
-    public Mesh mesh;
     public Material mat;
     public bool shouldRender = true;
 
@@ -208,12 +207,6 @@ public class GenerateBuildings : MonoBehaviour
 
     private void Update()
     {
-        /*bounds b = new bounds();
-        b.minPoints = new Unity.Mathematics.float3(-3, 0, 1);
-        b.maxPoints = new Unity.Mathematics.float3(1, 3, 5);
-
-        Mesh mesh = MakeCubeFromBounds(b);
-        Graphics.DrawMesh(mesh, Vector3.zero, Quaternion.Euler(rotation), mat, 1, Camera.main);*/
         if(shouldRender)
         {
             for (int i = 0; i < gameWorld.entityCount; ++i)
