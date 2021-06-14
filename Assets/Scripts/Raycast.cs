@@ -1,23 +1,22 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using Unity.Burst;
+﻿using Unity.Burst;
 using Unity.Collections;
 using Unity.Mathematics;
 using Unity.Jobs;
-using UnityEngine;
-using UnityEngine.Jobs;
-
 
 public static class Raycast
 {
+    public static NativeArray<bounds> boundsArray = new NativeArray<bounds>(30_000, Allocator.Persistent, NativeArrayOptions.ClearMemory);
+
     [BurstCompile(CompileSynchronously = true, Debug = false, DisableSafetyChecks = true, FloatMode = FloatMode.Fast, FloatPrecision = FloatPrecision.Low)]
-    private struct RaycastJob : IJob
+    private struct RaycastBurstJob : IJob
     {
         public float3 start;
         public float3 dir;
         public float maxDist;
+        public int entityCount;
         public NativeArray<raycast_result> hitRes;
-        public world gameWorld;
+        //public world gameWorld;
+        public NativeArray<bounds> bounds;
 
         public void Execute()
         {
@@ -25,23 +24,32 @@ public static class Raycast
 #if false
             SlowRayCast(gameWorld, start, dir, maxDist, out hit); 
 #else
-            RayCast(gameWorld, start, dir, maxDist, out hit);
+            RayCast(bounds, entityCount, start, dir, maxDist, out hit);
 #endif
             hitRes[0] = hit;
         }
     }
 
-    public static bool FastRaycast(ref world _world, float3 _start, float3 _dir, float _maxDist, out raycast_result _hitResult)
+    public static bool RaycastJob(ref world _world, float3 _start, float3 _dir, float _maxDist, out raycast_result _hitResult)
     {
+        _hitResult = new raycast_result();
+        if (!boundsArray.IsCreated)
+        {
+            UnityEngine.Debug.Log("Not created!");
+            return false;
+        }
         NativeArray<raycast_result> hitResults = new NativeArray<raycast_result>(1, Allocator.TempJob);
-        var runMyJob = new RaycastJob { gameWorld = _world, start = _start, dir = _dir, maxDist = _maxDist, hitRes = hitResults };
+        for(int i = 0; i < _world.entityCount; ++i)
+        {
+            boundsArray[i] = _world.entities[i].bounds;
+        }
+        var runMyJob = new RaycastBurstJob { bounds = boundsArray, entityCount = _world.entityCount, start = _start, dir = _dir, maxDist = _maxDist, hitRes = hitResults };
         runMyJob.Run();
         _hitResult = runMyJob.hitRes[0];
         hitResults.Dispose();
 
         return _hitResult.didHit;
     }
-
 
     [System.Diagnostics.Contracts.Pure]
     public static bool SlowRayCast(world _world, float3 _start, float3 _dir, float _maxDist, out raycast_result _hitResult)
@@ -60,7 +68,7 @@ public static class Raycast
             {
                 if (Collision.IsInside(_world.entities[entityIndex].bounds, checkPos))
                 {
-                    _hitResult.hitEntity = _world.entities[entityIndex];
+                    _hitResult.hitEntityIndex = entityIndex;
                     _hitResult.hitPos = checkPos;
                     _hitResult.didHit = true;
                     return true;
@@ -72,6 +80,7 @@ public static class Raycast
         return false;
     }
 
+    //TODO(chris): Improve performance here.
     public static bool RayCast(world _world, float3 _start, float3 _dir, float _maxDist, out raycast_result _hitResult)
     {
         _hitResult = new raycast_result();
@@ -79,8 +88,6 @@ public static class Raycast
         _hitResult.hitPos = finalPos;
         bounds raycastAABB = Collision.MakeBoundsFromVector(_start, finalPos);
 
-        float closestSqrDistance = 100000000;
-        int closestIndex = -1;
         NativeArray<int> entitiesInsideBB = new NativeArray<int>(_world.entityCount, Allocator.Temp, NativeArrayOptions.UninitializedMemory);
         int count = 0;
         for (int entityIndex = 0;
@@ -89,23 +96,10 @@ public static class Raycast
         {
             if (Collision.AABBOverlap(raycastAABB, _world.entities[entityIndex].bounds))
             {
-                float3 pos = _world.entities[entityIndex].position;
-                float a = _start.x - pos.x;
-                a *= a;
-                float b = _start.y - pos.y;
-                b *= b;
-                float c = _start.z - pos.z;
-                c *= c;
-                float sqrDist = a + b + c;
-                if (sqrDist < closestSqrDistance)
-                {
-                    closestSqrDistance = sqrDist;
-                    closestIndex = entityIndex;
-                    entitiesInsideBB[count++] = entityIndex;
-                }
+                entitiesInsideBB[count++] = entityIndex;
             }
         }
-        float3 checkPos = Math.Float3FromDirAndMag(_start, _dir, Mathf.Sqrt(closestSqrDistance) - 1);
+        float3 checkPos = _start;
         float stepDelta = .05f;
         float currStep = stepDelta;
         while (currStep < _maxDist)
@@ -117,7 +111,51 @@ public static class Raycast
                 int realIndex = entitiesInsideBB[entityIndex];
                 if (Collision.IsInside(_world.entities[realIndex].bounds, checkPos))
                 {
-                    _hitResult.hitEntity = _world.entities[realIndex];
+                    _hitResult.hitEntityIndex = realIndex;
+                    _hitResult.hitPos = checkPos;
+                    _hitResult.didHit = true;
+                    return true;
+                }
+            }
+            checkPos = Math.Float3FromDirAndMag(_start, _dir, currStep);
+            currStep += stepDelta;
+        }
+        entitiesInsideBB.Dispose();
+        return false;
+    }
+
+    //TODO(chris): Improve performance here.
+    public static bool RayCast(NativeArray<bounds> _bounds, int _entityCount, float3 _start, float3 _dir, float _maxDist, out raycast_result _hitResult)
+    {
+        _hitResult = new raycast_result();
+        float3 finalPos = Math.Float3FromDirAndMag(_start, _dir, _maxDist);
+        _hitResult.hitPos = finalPos;
+        bounds raycastAABB = Collision.MakeBoundsFromVector(_start, finalPos);
+
+        NativeArray<int> entitiesInsideBB = new NativeArray<int>(_entityCount, Allocator.Temp, NativeArrayOptions.UninitializedMemory);
+        int count = 0;
+        for (int entityIndex = 0;
+                entityIndex < _entityCount;
+                ++entityIndex)
+        {
+            if (Collision.AABBOverlap(raycastAABB, _bounds[entityIndex]))
+            {
+                entitiesInsideBB[count++] = entityIndex;
+            }
+        }
+        float3 checkPos = _start;
+        float stepDelta = .05f;
+        float currStep = stepDelta;
+        while (currStep < _maxDist)
+        {
+            for (int entityIndex = 0;
+                entityIndex < count;
+                ++entityIndex)
+            {
+                int realIndex = entitiesInsideBB[entityIndex];
+                if (Collision.IsInside(_bounds[realIndex], checkPos))
+                {
+                    _hitResult.hitEntityIndex = realIndex;
                     _hitResult.hitPos = checkPos;
                     _hitResult.didHit = true;
                     return true;

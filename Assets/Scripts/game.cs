@@ -31,9 +31,13 @@ public class game : MonoBehaviour
     public static float3 ldf = Math.Float3Normalize(new float3(-1, -1, 1));
     public static float3 ldb = Math.Float3Normalize(new float3(-1, -1, -1));
 
+    private ComputeBuffer positionBuffer;
+    public ComputeBuffer argsBuffer;
+    private Vector4[] positions;
+    private uint[] args = new uint[5] { 0, 0, 0, 0, 0 };
+
     private void OnDisable()
     {
-        gameWorld.entities.Dispose();
     }
 
     private void Start()
@@ -41,13 +45,16 @@ public class game : MonoBehaviour
         mainCam = Camera.main;
         gameWorld = new world(30000);
 
+        positions = new Vector4[gameWorld.maxEntities];
+        positionBuffer = new ComputeBuffer(gameWorld.maxEntities, 16);
+        argsBuffer = new ComputeBuffer(1, args.Length * sizeof(uint), ComputeBufferType.IndirectArguments);
 #if true
         SpawnLotsOfCubes(ref gameWorld, gameWorld.maxEntities);
 
         float3 start = new float3(50, 0, -50);
         System.Diagnostics.Stopwatch sw = System.Diagnostics.Stopwatch.StartNew();
         raycast_result hitResult;
-        Raycast.FastRaycast(ref gameWorld, new float3(50, 0, -50), forward, 10000, out hitResult);
+        Raycast.RaycastJob(ref gameWorld, new float3(50, 0, -50), forward, 10000, out hitResult);
 
         sw.Stop();
         Debug.Log($"Raycast took {sw.ElapsedMilliseconds}ms");
@@ -85,7 +92,7 @@ public class game : MonoBehaviour
         if(Input.GetKeyDown(KeyCode.Mouse1))
         {
             System.Diagnostics.Stopwatch sw = System.Diagnostics.Stopwatch.StartNew();
-            Raycast.FastRaycast(ref gameWorld, pos, dir, 1000, out result);
+            Raycast.RaycastJob(ref gameWorld, pos, dir, 1000, out result);
             sw.Stop();
             Debug.Log($"Raycast took {sw.ElapsedMilliseconds}ms and hit {result.hitPos.x}, {result.hitPos.y}, {result.hitPos.z}");
             GameObject go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
@@ -94,10 +101,12 @@ public class game : MonoBehaviour
             Debug.DrawLine(pos, result.hitPos, new Color32(122, 0, 122, 255), 10000);
         }
 
-        for (int i = 0; i < gameWorld.entityCount; ++i)
-        {
-            Graphics.DrawMesh(boxMesh, gameWorld.entities[i].position, Quaternion.identity, material, 1, mainCam);
-        }
+        float boxDimWithPadding = (gameWorld.entityCount * .5f) + gameWorld.entityCount;
+        Bounds b = new Bounds(new Vector3(boxDimWithPadding / 2, 0, boxDimWithPadding / 2), new Vector3(boxDimWithPadding, 100, boxDimWithPadding));
+
+        //positionBuffer.SetData(positions);
+        //material.SetBuffer("positionBuffer", positionBuffer);
+        Graphics.DrawMeshInstancedIndirect(boxMesh, 0, material, b, argsBuffer);
     }
 
     private void SpawnLotsOfGameObjects(int _spawnCount)
@@ -125,17 +134,33 @@ public class game : MonoBehaviour
         int dimSizeY = dimSizeX;
         float paddingX = .5f;
         float paddingY = .5f;
+        int boxIndex = 0;
         for (int y = 0; y < dimSizeY; ++y)
         {
             for (int x = 0; x < dimSizeX; ++x)
             {
                 entity curr = CreateCubePrimative(new float3(x + paddingX, 0, y + paddingY));
-                AddEntityToWorld(ref _w, ref curr);
+                GameWorld.AddEntity(ref _w, ref curr);
                 paddingX += .25f;
+                positions[boxIndex++] = new Vector4(curr.position.x, curr.position.y, curr.position.z, 1);
             }
             paddingY += .25f;
             paddingX = .5f;
         }
+        positionBuffer.SetData(positions);
+        material.SetBuffer("positionBuffer", positionBuffer);
+        if (boxMesh != null)
+        {
+            args[0] = (uint)boxMesh.GetIndexCount(0);
+            args[1] = (uint)gameWorld.entityCount;
+            args[2] = (uint)boxMesh.GetIndexStart(0);
+            args[3] = (uint)boxMesh.GetBaseVertex(0);
+        }
+        else
+        {
+            args[0] = args[1] = args[2] = args[3] = 0;
+        }
+        argsBuffer.SetData(args);
     }
 
     private static void RayCastAlongSphere(ref world _w, float3 _origin, float _radius)
@@ -163,12 +188,12 @@ public class game : MonoBehaviour
                 start = Math.Float3Normalize(start);
                 start = start * _radius;
                 float3 dir = Math.Float3Normalize(new float3(0, 0, 0) - start);
-                if (Raycast.FastRaycast(ref _w, start, dir, _radius, out hitResult))
+                if (Raycast.RaycastJob(ref _w, start, dir, _radius, out hitResult))
                 {
                     raycast_result result2;
                     float3 newStart = start + Math.Float3FromDirAndMag(start, dir * 1, _radius * 2);
                     //newStart = float3Addfloat3(hitResult.hitPos, float3FromDirAndMag(hitResult.hitPos, dir, 1));
-                    if (Raycast.FastRaycast(ref _w, newStart, dir* 1, _radius * 2, out result2))
+                    if (Raycast.RaycastJob(ref _w, newStart, dir* 1, _radius * 2, out result2))
                     {
                         Debug.DrawLine(hitResult.hitPos, result2.hitPos, Color.green, Mathf.Infinity);
                     }
@@ -262,21 +287,6 @@ public class game : MonoBehaviour
         Debug.DrawLine(new Vector3(0, 0, 0), other, _col, Mathf.Infinity);
         float3 proj = Math.Float3Projection(raycast, other);
         Debug.DrawLine(other, proj, Color.green, Mathf.Infinity);
-    }
-
-    public static void AddEntityToWorld(ref world _w, ref entity _e)
-    {
-        if(_w.entityCount -1 == _w.maxEntities)
-        {
-            _w.maxEntities *= 2;
-            NativeArray<entity> tmp = new NativeArray<entity>(_w.maxEntities, Allocator.Temp, NativeArrayOptions.ClearMemory);
-            NativeArray<entity>.Copy(_w.entities, tmp);
-            _w.entities.Dispose(); 
-            _w.entities = new NativeArray<entity>(_w.maxEntities, Allocator.Persistent, NativeArrayOptions.ClearMemory);
-            NativeArray<entity>.Copy(tmp, _w.entities);
-            tmp.Dispose();
-        }
-        _w.entities[_w.entityCount++] = _e;
     }
 
     [System.Diagnostics.Contracts.Pure]

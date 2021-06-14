@@ -341,7 +341,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   boxMesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
-  material: {fileID: 10303, guid: 0000000000000000f000000000000000, type: 0}
+  material: {fileID: 2100000, guid: b13d6b59e95f48c4dab65c4ec9eace37, type: 2}
   mainCam: {fileID: 0}
 --- !u!4 &1434208527
 Transform:

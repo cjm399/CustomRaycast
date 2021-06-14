@@ -32,7 +32,6 @@ public class GenerateBuildings : MonoBehaviour
 
     private void OnDisable()
     {
-        gameWorld.entities.Dispose();
     }
 
     void ParseObj(string _obj)
@@ -43,16 +42,18 @@ public class GenerateBuildings : MonoBehaviour
         Mesh currMesh = new Mesh();
         List<Vector3> verts = new List<Vector3>();
         List<int> triangles = new List<int>();
-        List < entity > entities = new List<entity>();
+        List <entity> entities = new List<entity>();
         bool first = true;
         int vertexOffset = 0;
+        int count = 0;
         foreach(string line in lines)
         {
             char function = line[0];
             //New object coming in!!!
             if(function == 'o')
             {
-                if(!first)
+                count++;
+                if (!first)
                 {
                     curr.position.x /= verts.Count;
                     curr.position.z /= verts.Count;
@@ -121,6 +122,7 @@ public class GenerateBuildings : MonoBehaviour
                 triangles.Add(c);
             }
         }
+        Debug.Log(count);
         gameWorld = new world(entities.Count);
         for (int i = 0; i < entities.Count; ++i)
         {
