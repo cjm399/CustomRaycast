@@ -10,8 +10,6 @@ public static class UIHelpers
         float width = _rectTrans.rect.xMax - _rectTrans.rect.xMin;
         float height = _rectTrans.rect.yMax - _rectTrans.rect.yMin;
 
-        Debug.Log($"Pos {_trans.position} vs the mesh center: {_trans.GetComponent<MeshFilter>().mesh.bounds.center}");
-
         Vector3 screenPos = cam.WorldToViewportPoint(_trans.TransformPoint(Vector3.zero));
 
         screenPos.x = Mathf.Clamp01(screenPos.x);

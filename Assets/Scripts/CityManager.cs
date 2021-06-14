@@ -1,5 +1,7 @@
-﻿using System.Collections.Generic;
+﻿using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Networking;
 using System.IO;
 using Unity.Mathematics;
 
@@ -20,6 +22,9 @@ public class CityManager : MonoBehaviour
 
     private void Start()
     {
+#if UNITY_WEBGL
+        StartCoroutine(GoogleGetData("https://simphl.s3.amazonaws.com/buildings_obj.obj"));
+#else
         string fileName = Path.Combine(Application.streamingAssetsPath, objFile);
 
         if (!File.Exists(fileName))
@@ -31,9 +36,29 @@ public class CityManager : MonoBehaviour
         string objData = File.ReadAllText(fileName);
         int objLen = (int)(objData.Split('o').Length * 1.2f);
         debugMeshes = new List<Mesh>(objLen);
-
         gameWorld = new world(objLen);
         MeshHelpers.CreateMeshesFromObj(objData, ref debugMeshes, ref gameWorld);
+#endif
+    }
+
+    private IEnumerator GoogleGetData(string _dataURL)
+    {
+        string downloadedData = null;
+        UnityWebRequest webRequest = UnityWebRequest.Get(_dataURL);
+
+        yield return webRequest.SendWebRequest();
+
+        if (webRequest.isNetworkError || webRequest.isHttpError)
+        {
+            Debug.LogError($"Error downloading building data from Google: {webRequest.error}");
+        }
+        else
+        {
+            downloadedData = webRequest.downloadHandler.text;
+            int objLen = (int)(downloadedData.Split('o').Length * 1.2f);
+            debugMeshes = new List<Mesh>(objLen);
+            MeshHelpers.CreateMeshesFromObj(downloadedData, ref debugMeshes, ref gameWorld);
+        }
     }
 
     private void OnDisable()
