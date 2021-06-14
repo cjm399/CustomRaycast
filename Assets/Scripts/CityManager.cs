@@ -9,9 +9,14 @@ public class CityManager : MonoBehaviour
     public Vector3 rotation;
     public bool debugRender = false;
     public Material debugMat;
+    public Canvas dynamicBuildingCanvas;
+    public RectTransform buildingUI;
+    public Transform selectedBuildingTransform;
 
     private world gameWorld;
     private List<Mesh> debugMeshes;
+
+    private int selectedEntity = -1;
 
     private void Start()
     {
@@ -50,15 +55,24 @@ public class CityManager : MonoBehaviour
             sw.Stop();
             string hitStr = $"hit {gameWorld.entities[result.hitEntityIndex].name} entity as position {result.hitPos}";
             Color drawColor = new Color32(122, 0, 122, 255);
+            selectedEntity = result.hitEntityIndex;
             if (!result.didHit)
             {
                 hitStr = "did not hit";
                 drawColor = new Color32(255, 0, 0, 255);
+                selectedEntity = -1;
             }
             Debug.Log($"Raycast took {sw.ElapsedMilliseconds}ms and {hitStr}");
             Debug.DrawLine(pos, result.hitPos, drawColor, 10000);
         }
 
+        if (selectedEntity >= 0)
+        {
+            selectedBuildingTransform.position = gameWorld.entities[selectedEntity].position;
+            buildingUI.GetComponentInChildren<TMPro.TMP_Text>().text = gameWorld.entities[selectedEntity].name;
+            UIHelpers.WorldSpaceToScreenSpace(ref selectedBuildingTransform, ref buildingUI, ref dynamicBuildingCanvas);
+            //UIHelpers.SnapUiToBuilding(ref selectedBuildingTransform, ref buildingUI, ref dynamicBuildingCanvas);
+        }
 
         if (debugRender)
         {
