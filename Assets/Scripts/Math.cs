@@ -5,6 +5,7 @@ using Unity.Mathematics;
 
 public static class Math
 {
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
     public static float Float3DotProd(float3 _a, float3 _b)
     {
         float result = _a.x * _b.x + _a.y * _b.y + _a.z * _b.z;

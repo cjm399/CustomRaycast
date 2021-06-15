@@ -56,6 +56,7 @@ public static class MeshHelpers
 
                         currMesh = MakeCubeFromBounds(curr.bounds);
                         currMesh.RecalculateNormals();
+                        GameWorld.SetTags(ref curr, tag.BUILDING);
                         GameWorld.AddEntity(ref _gameWorld, ref curr);
                         _meshes.Add(currMesh);
                         vertexOffset += verts.Count;

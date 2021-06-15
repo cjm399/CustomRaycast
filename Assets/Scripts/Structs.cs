@@ -5,6 +5,13 @@ public struct bounds
 {
     public float3 minPoints;
     public float3 maxPoints;
+    public float3 center;
+}
+
+public struct sphereBounds
+{
+    public float radius;
+    public float3 center;
 }
 
 public struct raycast_result
@@ -20,6 +27,7 @@ public struct entity
     public float3 scale;
     public bounds bounds;
     public string name;
+    public int tags;
 }
 
 public struct world
@@ -31,7 +39,7 @@ public struct world
     {
         maxEntities = _maxEntities;
         entityCount = 0;
-        entities = new System.Collections.Generic.List<entity>(maxEntities);//new NativeArray<entity>(maxEntities, Allocator.Persistent, NativeArrayOptions.ClearMemory);
+        entities = new System.Collections.Generic.List<entity>(maxEntities);
     }
 }
 

@@ -15,10 +15,45 @@ public class CityManager : MonoBehaviour
     public RectTransform buildingUI;
     public Transform selectedBuildingTransform;
 
+    private Vector3 groundPos = new Vector3(0,-.1f,0);
+
     private world gameWorld;
     private List<Mesh> debugMeshes;
 
-    private int selectedEntity = -1;
+    private int selectedEntityIndex = -1;
+
+    private Mesh groundMesh;
+
+    public static CityManager Instance;
+
+    private void Awake()
+    {
+        if(Instance)
+        {
+            Destroy(this);
+            return;
+        }
+        else
+        {
+            Instance = this;
+        }
+    }
+
+    public void SelectAllBuildingsInSphere(sphereBounds _s)
+    {
+        System.Diagnostics.Stopwatch sw = System.Diagnostics.Stopwatch.StartNew();
+        List<entity> entities = new List<entity>();
+        for(int i = 0; i < gameWorld.entityCount; ++i)
+        {
+            if(Collision.AABBSphereOverlap(gameWorld.entities[i].bounds, _s))
+            {
+                entities.Add(gameWorld.entities[i]);
+                Debug.Log($"{gameWorld.entities[i].name} was in overlap sphere.");
+            }
+        }
+        sw.Stop();
+        Debug.Log($"Select All Buildings In Sphere Took {sw.ElapsedMilliseconds}ms");
+    }
 
     private void Start()
     {
@@ -39,6 +74,19 @@ public class CityManager : MonoBehaviour
         gameWorld = new world(objLen);
         MeshHelpers.CreateMeshesFromObj(objData, ref debugMeshes, ref gameWorld);
 #endif
+
+        //Generate Ground plane.
+        bounds ground = new bounds();
+        ground.minPoints = new float3(-1000, -.1f, -1000);
+        ground.maxPoints = new float3(1000, .1f, 1000);
+
+        groundMesh = MeshHelpers.MakeCubeFromBounds(ground);
+        groundMesh.RecalculateBounds();
+        entity groundEntity = new entity();
+        groundEntity.bounds.minPoints = groundMesh.bounds.min;
+        groundEntity.bounds.maxPoints = groundMesh.bounds.max;
+        groundEntity.name = "Ground";
+        GameWorld.AddEntity(ref gameWorld, ref groundEntity);
     }
 
     private IEnumerator GoogleGetData(string _dataURL)
@@ -80,23 +128,26 @@ public class CityManager : MonoBehaviour
             sw.Stop();
             string hitStr = $"hit {gameWorld.entities[result.hitEntityIndex].name} entity as position {result.hitPos}";
             Color drawColor = new Color32(122, 0, 122, 255);
-            selectedEntity = result.hitEntityIndex;
+            selectedEntityIndex = result.hitEntityIndex;
             if (!result.didHit)
             {
                 hitStr = "did not hit";
                 drawColor = new Color32(255, 0, 0, 255);
-                selectedEntity = -1;
+                selectedEntityIndex = -1;
             }
             Debug.Log($"Raycast took {sw.ElapsedMilliseconds}ms and {hitStr}");
             Debug.DrawLine(pos, result.hitPos, drawColor, 10000);
         }
 
-        if (selectedEntity >= 0)
+        if (selectedEntityIndex >= 0)
         {
-            selectedBuildingTransform.position = gameWorld.entities[selectedEntity].position;
-            buildingUI.GetComponentInChildren<TMPro.TMP_Text>().text = gameWorld.entities[selectedEntity].name;
-            UIHelpers.WorldSpaceToScreenSpace(ref selectedBuildingTransform, ref buildingUI, ref dynamicBuildingCanvas);
-            //UIHelpers.SnapUiToBuilding(ref selectedBuildingTransform, ref buildingUI, ref dynamicBuildingCanvas);
+            entity selectedEntity = gameWorld.entities[selectedEntityIndex];
+            if(GameWorld.HasTag(ref selectedEntity, global::tag.BUILDING))
+            {
+                selectedBuildingTransform.position = selectedEntity.position;
+                buildingUI.GetComponentInChildren<TMPro.TMP_Text>().text = selectedEntity.name;
+                UIHelpers.WorldSpaceToScreenSpace(ref selectedBuildingTransform, ref buildingUI, ref dynamicBuildingCanvas);
+            }
         }
 
         if (debugRender)
@@ -108,5 +159,8 @@ public class CityManager : MonoBehaviour
                 Graphics.DrawMesh(debugMeshes[i], gameWorld.entities[i].position, rot, debugMat, 1, cam);
             }
         }
+#if false //Draw the ground entity.
+        Graphics.DrawMesh(groundMesh, groundPos, Quaternion.identity, debugMat, 1, Camera.main);
+#endif
     }
 }
