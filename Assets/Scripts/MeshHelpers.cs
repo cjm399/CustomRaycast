@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
+using System.Xml;
 
 public static class MeshHelpers
 {
@@ -103,6 +104,118 @@ public static class MeshHelpers
             }
         }
         return isValidObj;
+    }
+
+    public static bool CreateMeshesFromCollada(string _xmlContent, ref List<Mesh> _meshes, ref world _gameWorld)
+    {
+        XmlDocument doc = new XmlDocument();
+        doc.LoadXml(_xmlContent);
+        XmlNode geoNode = doc.DocumentElement.ChildNodes[4];
+        
+        foreach(XmlNode node in geoNode.ChildNodes)
+        {
+            XmlElement nodeElement = (XmlElement)node;
+            string name = nodeElement.GetAttribute("name");
+            foreach( XmlNode meshNode in nodeElement.ChildNodes)
+            {
+                Mesh currMesh = new Mesh();
+                List<Vector3> verts = new List<Vector3>();
+                List<int> triangles = new List<int>();
+                entity curr = new entity();
+
+                foreach (XmlNode sourceNode in meshNode.ChildNodes)
+                {
+                    if(sourceNode.Name == "source")
+                    {
+                        if(sourceNode.Attributes["id"].InnerText.Contains("positions"))
+                        {
+                            foreach(XmlNode childNode in sourceNode.ChildNodes)
+                            {
+                                //VERTEX POSITION INFO
+                                if(childNode.Name == "float_array")
+                                {
+                                    string[] vals = childNode.InnerText.Split(' ');
+                                    for(int i = 0; i < vals.Length / 3; ++i)
+                                    {
+                                        float x = float.Parse(vals[(i * 3) + 0]);
+                                        float y = float.Parse(vals[(i * 3) + 1]);
+                                        float z = float.Parse(vals[(i * 3) + 2]);
+
+                                        Vector3 vert = new Vector3(x,y,z);
+                                        verts.Add(vert);
+                                        if (curr.position.y > y)
+                                        {
+                                            curr.position.y = y;
+                                        }
+                                        curr.position.x += x;
+                                        curr.position.z += z;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    else if(sourceNode.Name == "verticies")
+                    {
+                    }
+                    else if(sourceNode.Name == "triangles")
+                    {
+                        int vertexOffset = 0;
+                        int vertexStart = 0;
+                        foreach(XmlNode childNode in sourceNode.ChildNodes)
+                        {
+                            if(childNode.Name == "input")
+                            {
+                                if(childNode.Attributes["semantic"].InnerText == "VERTEX")
+                                {
+                                    vertexStart = int.Parse(childNode.Attributes["offset"].InnerText);
+                                }
+
+                                int tmpMaxOffset = int.Parse(childNode.Attributes["offset"].InnerText) + 1;
+
+                                if (tmpMaxOffset > vertexOffset)
+                                {
+                                    vertexOffset = tmpMaxOffset;
+                                }
+                            }
+                            if(childNode.Name == "p")
+                            {
+                                string[] vals = childNode.InnerText.Split(' ');
+                                for(int i = 0; i < vals.Length/vertexOffset; ++i)
+                                {
+                                    int vertIndex = int.Parse(vals[vertexStart + (vertexOffset * i)]);
+                                    triangles.Add(vertIndex);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                curr.position.x /= verts.Count;
+                curr.position.z /= verts.Count;
+
+                for (int i = 0; i < verts.Count; ++i)
+                {
+                    Vector3 newPos = verts[i];
+                    newPos.x -= curr.position.x;
+                    newPos.y -= curr.position.y;
+                    newPos.z -= curr.position.z;
+                    verts[i] = newPos;
+                }
+
+                currMesh.SetVertices(verts);
+                currMesh.SetTriangles(triangles, 0);
+                currMesh.RecalculateBounds();
+                currMesh.RecalculateNormals();
+                _meshes.Add(currMesh);
+                curr.bounds.minPoints = currMesh.bounds.min;
+                curr.bounds.maxPoints = currMesh.bounds.max;
+                string usedName = name.Substring(0, name.IndexOf("_Mesh"));
+                curr.name = usedName;
+                GameWorld.SetTags(ref curr, tag.BUILDING);
+                GameWorld.AddEntity(ref _gameWorld, ref curr);
+            }
+        }
+        return true;
     }
 
     public static Mesh MakeCubeFromBounds(bounds _b)

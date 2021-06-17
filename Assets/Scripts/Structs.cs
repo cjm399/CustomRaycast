@@ -26,6 +26,7 @@ public struct entity
     public float3 position;
     public float3 scale;
     public bounds bounds;
+    public int vertexColorIndex;
     public string name;
     public int tags;
 }
