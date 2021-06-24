@@ -172,7 +172,6 @@ public static class MeshHelpers
                                     int a = (int)(af * 255);
                                     int vertexIndex = (r * 255 * 255 * 255) + (g * 255 * 255) + (b * 255) + a;
                                     curr.vertexColorIndex = vertexIndex;
-                                    Debug.Log(vertexIndex);
                                 }
                             }
                         }
