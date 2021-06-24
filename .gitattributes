@@ -1,0 +1,2 @@
+Assets/StreamingAssets/vc_city.dae filter=lfs diff=lfs merge=lfs -text
+Assets/StreamingAssets/city.dae filter=lfs diff=lfs merge=lfs -text

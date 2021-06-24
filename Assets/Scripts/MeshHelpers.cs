@@ -127,21 +127,21 @@ public static class MeshHelpers
                 {
                     if(sourceNode.Name == "source")
                     {
-                        if(sourceNode.Attributes["id"].InnerText.Contains("positions"))
+                        if (sourceNode.Attributes["id"].InnerText.Contains("positions"))
                         {
-                            foreach(XmlNode childNode in sourceNode.ChildNodes)
+                            foreach (XmlNode childNode in sourceNode.ChildNodes)
                             {
                                 //VERTEX POSITION INFO
-                                if(childNode.Name == "float_array")
+                                if (childNode.Name == "float_array")
                                 {
                                     string[] vals = childNode.InnerText.Split(' ');
-                                    for(int i = 0; i < vals.Length / 3; ++i)
+                                    for (int i = 0; i < vals.Length / 3; ++i)
                                     {
                                         float x = float.Parse(vals[(i * 3) + 0]);
                                         float y = float.Parse(vals[(i * 3) + 1]);
                                         float z = float.Parse(vals[(i * 3) + 2]);
 
-                                        Vector3 vert = new Vector3(x,y,z);
+                                        Vector3 vert = new Vector3(x, y, z);
                                         verts.Add(vert);
                                         if (curr.position.y > y)
                                         {
@@ -150,6 +150,29 @@ public static class MeshHelpers
                                         curr.position.x += x;
                                         curr.position.z += z;
                                     }
+                                }
+                            }
+                        }
+                        else if (sourceNode.Attributes["id"].InnerText.Contains("colors"))
+                        {
+                            foreach (XmlNode childNode in sourceNode.ChildNodes)
+                            {
+                                //COLOR INFO
+                                if (childNode.Name == "float_array")
+                                {
+                                    string[] vals = childNode.InnerText.Split(' ');
+                                    float rf = float.Parse(vals[0]);
+                                    float gf = float.Parse(vals[1]);
+                                    float bf = float.Parse(vals[2]);
+                                    float af = float.Parse(vals[3]);
+
+                                    int r = (int)(rf * 255);
+                                    int g = (int)(gf * 255);
+                                    int b = (int)(bf * 255);
+                                    int a = (int)(af * 255);
+                                    int vertexIndex = (r * 255 * 255 * 255) + (g * 255 * 255) + (b * 255) + a;
+                                    curr.vertexColorIndex = vertexIndex;
+                                    Debug.Log(vertexIndex);
                                 }
                             }
                         }
@@ -209,7 +232,7 @@ public static class MeshHelpers
                 _meshes.Add(currMesh);
                 curr.bounds.minPoints = currMesh.bounds.min;
                 curr.bounds.maxPoints = currMesh.bounds.max;
-                string usedName = name.Substring(0, name.IndexOf("_Mesh"));
+                string usedName = name;//.Substring(0, name.IndexOf("_Mesh"));
                 curr.name = usedName;
                 GameWorld.SetTags(ref curr, tag.BUILDING);
                 GameWorld.AddEntity(ref _gameWorld, ref curr);
