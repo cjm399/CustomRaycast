@@ -48,7 +48,5 @@ sysinfo.txt
 *.unitypackage
 
 # Saved files
-/Assets/StreamingAssets/*.csv
-/Assets/StreamingAssets/*.csv.meta
 /Assets/StreamingAssets/*.json
 /Assets/StreamingAssets/*.json.meta

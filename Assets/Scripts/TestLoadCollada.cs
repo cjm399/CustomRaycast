@@ -34,9 +34,10 @@ public class TestLoadCollada : MonoBehaviour
         {
             if(propData.placeIdToPropertyData.ContainsKey(gameWorld.entities[i].name))
             {
+                Color rand = new Color(Random.Range(0f, 1f), Random.Range(0f, 1f), Random.Range(0f, 1f), 1);
                 int index = gameWorld.entities[i].vertexColorIndex;
                 Color32 destColor = PropertyData.zoningMappingColors[propData.placeIdToPropertyData[gameWorld.entities[i].name].zone];
-                buildingMapper.SetPixel(index % 512, index / 512, (Color)destColor);
+                buildingMapper.SetPixel(index % 512, index / 512, Color.blue);//rand);//(Color)destColor);
 
                 if(propData.placeIdToPropertyData[gameWorld.entities[i].name].zone == (int)Zones.Comercial)
                 {
@@ -53,13 +54,15 @@ public class TestLoadCollada : MonoBehaviour
             }
             else
             {
-                Debug.LogError($"Could not find building {gameWorld.entities[i].name}");
+                int index = gameWorld.entities[i].vertexColorIndex;
+                buildingMapper.SetPixel(index % 512, index / 512, Color.magenta);
+                //Debug.LogError($"Could not find building {gameWorld.entities[i].name}");
             }
         }
         Debug.Log($"Ind: {ind} Res: {res} Com {com}");
         buildingMapper.Apply();
-        //string path = Application.streamingAssetsPath + "testImg.png";
-        //File.WriteAllBytes(path, buildingMapper.EncodeToPNG());
+        string path = Path.Combine(Application.streamingAssetsPath, "testImg.png");
+        File.WriteAllBytes(path, buildingMapper.EncodeToPNG());
     }
 
 

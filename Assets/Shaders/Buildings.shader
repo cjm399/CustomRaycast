@@ -96,7 +96,7 @@
                 pixelIndex = i.color.a + (i.color.b * 255);// + (i.color.g*255*255) + (i.color.r*255*255*255);
                 pixelPos = float2(int(pixelIndex)%512, floor(pixelIndex/512));
                 pixelColor = tex2D(_LookupTex, pixelPos / float2(512,512));
-
+				return pixelColor;
                 // Setup textures
                 fixed4 texResidential = tex2D(_ResidentialTex, i.uvResidential);
                 fixed4 texCommercial = tex2D(_CommercialTex, i.uvCommercial);
