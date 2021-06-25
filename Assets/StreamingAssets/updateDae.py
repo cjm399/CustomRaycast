@@ -2,12 +2,11 @@ inputfile = open('city.dae')
 outputfile = open('vc_city.dae', 'w')
 
 fullFile = ""
-meshCount = -1
 r = g = b = a = 0
 
 for line in inputfile:
     if line.__contains__("<geometry"):
-        meshCount +=1
+        cols = [r/255, g/255, b/255, a/255]
         a+=1
         if a > 255:
             b+=1
@@ -15,7 +14,6 @@ for line in inputfile:
         if b > 255:
             g+=1
             b = 0
-        cols = [r/255, g/255, b/255, a/255]
     if line.__contains__("colors-Cd-array") :
         index = line.index("\">")
         if line.__contains__("</float_array>"):

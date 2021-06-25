@@ -73,7 +73,7 @@
             float4 _SpecialTex_ST;
             float4 _SpecialTint;
 
-            float pixelIndex;
+            uint pixelIndex;
             float2 pixelPos;
             float4 pixelColor;
 
@@ -90,13 +90,17 @@
                 return o;
             }
 
-            fixed4 frag(v2f i) : SV_Target
+            float4 frag(v2f i) : SV_Target
             {
                 // Setup the vertex color to pixel map
-                pixelIndex = i.color.a + (i.color.b * 255);// + (i.color.g*255*255) + (i.color.r*255*255*255);
-                pixelPos = float2(int(pixelIndex)%512, floor(pixelIndex/512));
-                pixelColor = tex2D(_LookupTex, pixelPos / float2(512,512));
+				pixelIndex = (i.color.r * 256 * 256 * 256) + (i.color.g * 256 * 256) + (i.color.b * 256) + i.color.a;
+
+				float x = pixelIndex % 256;
+				float y = pixelIndex / 256;
+				pixelPos = float2(x / 256, y / 256);
+				pixelColor = tex2D(_LookupTex, pixelPos);
 				return pixelColor;
+
                 // Setup textures
                 fixed4 texResidential = tex2D(_ResidentialTex, i.uvResidential);
                 fixed4 texCommercial = tex2D(_CommercialTex, i.uvCommercial);

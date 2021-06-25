@@ -7,6 +7,7 @@ public class TestLoadCollada : MonoBehaviour
 {
     public string colladaFile;
     public Material debugMat;
+    public Material buildingMat;
     public Vector3 rotation;
     public Texture2D buildingMapper;
     List<Mesh> meshes = new List<Mesh>(20000);
@@ -30,16 +31,25 @@ public class TestLoadCollada : MonoBehaviour
 
         int res = 0, ind = 0, com = 0;
 
+        byte r = 0, g = 0;
         for(int i = 0; i < gameWorld.entityCount; ++i)
         {
+            Color col = new Color32(r, g, 0, 255);
+            r += 1;
+            if(r >= 255)
+            {
+                g += 1;
+                r = 0;
+            }
+            Color rand = new Color(Random.Range(0f, 1f), Random.Range(0f, 1f), Random.Range(0f, 1f), 1);
             if(propData.placeIdToPropertyData.ContainsKey(gameWorld.entities[i].name))
             {
-                Color rand = new Color(Random.Range(0f, 1f), Random.Range(0f, 1f), Random.Range(0f, 1f), 1);
                 int index = gameWorld.entities[i].vertexColorIndex;
                 Color32 destColor = PropertyData.zoningMappingColors[propData.placeIdToPropertyData[gameWorld.entities[i].name].zone];
-                buildingMapper.SetPixel(index % 512, index / 512, Color.blue);//rand);//(Color)destColor);
+                //destColor = rand;
+                buildingMapper.SetPixel(index % 256, index / 256, rand);
 
-                if(propData.placeIdToPropertyData[gameWorld.entities[i].name].zone == (int)Zones.Comercial)
+                if (propData.placeIdToPropertyData[gameWorld.entities[i].name].zone == (int)Zones.Comercial)
                 {
                     com += 1;
                 }
@@ -55,7 +65,7 @@ public class TestLoadCollada : MonoBehaviour
             else
             {
                 int index = gameWorld.entities[i].vertexColorIndex;
-                buildingMapper.SetPixel(index % 512, index / 512, Color.magenta);
+                buildingMapper.SetPixel(index % 256, index / 256, rand);
                 //Debug.LogError($"Could not find building {gameWorld.entities[i].name}");
             }
         }
