@@ -47,7 +47,7 @@ public class TestLoadCollada : MonoBehaviour
                 int index = gameWorld.entities[i].vertexColorIndex;
                 Color32 destColor = PropertyData.zoningMappingColors[propData.placeIdToPropertyData[gameWorld.entities[i].name].zone];
                 //destColor = rand;
-                buildingMapper.SetPixel(index % 256, index / 256, rand);
+                buildingMapper.SetPixel(index % 256, index / 256, destColor);
 
                 if (propData.placeIdToPropertyData[gameWorld.entities[i].name].zone == (int)Zones.Comercial)
                 {
@@ -65,7 +65,7 @@ public class TestLoadCollada : MonoBehaviour
             else
             {
                 int index = gameWorld.entities[i].vertexColorIndex;
-                buildingMapper.SetPixel(index % 256, index / 256, rand);
+                buildingMapper.SetPixel(index % 256, index / 256, Color.magenta);
                 //Debug.LogError($"Could not find building {gameWorld.entities[i].name}");
             }
         }

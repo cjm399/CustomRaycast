@@ -7,13 +7,13 @@ r = g = b = a = 0
 for line in inputfile:
     if line.__contains__("<geometry"):
         cols = [r/255, g/255, b/255, a/255]
-        a+=1
-        if a > 255:
-            b+=1
-            a = 0
-        if b > 255:
+        r+=1
+        if r > 255:
             g+=1
-            b = 0
+            r = 0
+        if g > 255:
+            b+=1
+            g = 0
     if line.__contains__("colors-Cd-array") :
         index = line.index("\">")
         if line.__contains__("</float_array>"):

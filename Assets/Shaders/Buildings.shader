@@ -93,14 +93,26 @@
             float4 frag(v2f i) : SV_Target
             {
                 // Setup the vertex color to pixel map
-				pixelIndex = (i.color.r * 256 * 256 * 256) + (i.color.g * 256 * 256) + (i.color.b * 256) + i.color.a;
+				pixelIndex = (i.color.b * 256 * 256) + (i.color.g * 256) + i.color.r;
 
 				float x = pixelIndex % 256;
 				float y = pixelIndex / 256;
+				//x = 512;
+				//y = 0;
+				//x = 0;
+				//y = 0;
 				pixelPos = float2(x / 256, y / 256);
 				pixelColor = tex2D(_LookupTex, pixelPos);
-				return pixelColor;
+				//return pixelColor;
 
+				float4 col = float4(0,0,0,1);
+				/*if (i.color.a == 1)
+				{
+					col.b = 1;
+				}*/
+				//col.a += i.color.a;
+				//return float4(i.color.a, 0, 0, 1);//col;
+				//return pixelColor;
                 // Setup textures
                 fixed4 texResidential = tex2D(_ResidentialTex, i.uvResidential);
                 fixed4 texCommercial = tex2D(_CommercialTex, i.uvCommercial);
@@ -108,7 +120,7 @@
                 fixed4 texSpecial = tex2D(_SpecialTex, i.uvSpecial);
 
                 // Check the pixel color and assign textures/colors based on classification
-                fixed4 col = fixed4(0, 0, 0, 0);// i.color;
+                //fixed4 col = fixed4(0, 0, 0, 0);// i.color;
 
                 // Commercial
                 col = pixelColor.b >= .4f ? _CommercialTint : col;

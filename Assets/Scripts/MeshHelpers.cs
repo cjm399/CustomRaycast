@@ -169,8 +169,9 @@ public static class MeshHelpers
                                     int r = (int)(rf * 255);
                                     int g = (int)(gf * 255);
                                     int b = (int)(bf * 255);
+                                    //A seems to not be reliable in FBX, seems to show always as 1 in the shader. DO NOT USE!
                                     int a = (int)(af * 255);
-                                    int vertexIndex = (r * 256 * 256 * 256) + (g * 256 * 256) + (b * 256) + a;
+                                    int vertexIndex = (a * 256 * 256 * 256) + (b * 256 * 256) + (g * 256) + r;
                                     curr.vertexColorIndex = vertexIndex;
                                 }
                             }
