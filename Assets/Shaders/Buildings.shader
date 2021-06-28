@@ -19,7 +19,7 @@
 
     SubShader
     {
-        Tags { "RenderType"="Opaque" }
+        Tags { "RenderType"="Opaque"}
         LOD 100
 
         Pass
@@ -93,36 +93,29 @@
             float4 frag(v2f i) : SV_Target
             {
                 // Setup the vertex color to pixel map
-				pixelIndex = (i.color.b * 256 * 256) + (i.color.g * 256) + i.color.r;
+				float r = i.color.r * 256.0f;
+				float g = i.color.g * 256.0f;
+				float gVal = floor((g * 256.0f));
+				pixelIndex = gVal + r;
 
 				float x = pixelIndex % 256;
 				float y = pixelIndex / 256;
-				//x = 512;
-				//y = 0;
-				//x = 0;
-				//y = 0;
-				pixelPos = float2(x / 256, y / 256);
+
+				pixelPos = float2(x / 256.0f, y / 256.0f);
 				pixelColor = tex2D(_LookupTex, pixelPos);
-				//return pixelColor;
+
+				return pixelColor;
 
 				float4 col = float4(0,0,0,1);
-				/*if (i.color.a == 1)
-				{
-					col.b = 1;
-				}*/
-				//col.a += i.color.a;
-				//return float4(i.color.a, 0, 0, 1);//col;
-				//return pixelColor;
-                // Setup textures
-                fixed4 texResidential = tex2D(_ResidentialTex, i.uvResidential);
-                fixed4 texCommercial = tex2D(_CommercialTex, i.uvCommercial);
-                fixed4 texIndustrial = tex2D(_IndustrialTex, i.uvIndustrial);
-                fixed4 texSpecial = tex2D(_SpecialTex, i.uvSpecial);
 
-                // Check the pixel color and assign textures/colors based on classification
-                //fixed4 col = fixed4(0, 0, 0, 0);// i.color;
+                // Setup textures
+				float4 texResidential = tex2D(_ResidentialTex, i.uvResidential);
+				float4 texCommercial = tex2D(_CommercialTex, i.uvCommercial);
+				float4 texIndustrial = tex2D(_IndustrialTex, i.uvIndustrial);
+				float4 texSpecial = tex2D(_SpecialTex, i.uvSpecial);
 
                 // Commercial
+				col = pixelColor.b <= .0f ? float4(1, 0, 1, 1) : col;
                 col = pixelColor.b >= .4f ? _CommercialTint : col;
 
                 // Industrial
