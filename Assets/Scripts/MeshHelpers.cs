@@ -137,9 +137,9 @@ public static class MeshHelpers
                                     string[] vals = childNode.InnerText.Split(' ');
                                     for (int i = 0; i < vals.Length / 3; ++i)
                                     {
-                                        float x = float.Parse(vals[(i * 3) + 0]);
-                                        float y = float.Parse(vals[(i * 3) + 1]);
-                                        float z = float.Parse(vals[(i * 3) + 2]);
+                                        float x = -1f*float.Parse(vals[(i * 3) + 0])/100f;
+                                        float y = float.Parse(vals[(i * 3) + 1])/100f;
+                                        float z = float.Parse(vals[(i * 3) + 2])/100f;
 
                                         Vector3 vert = new Vector3(x, y, z);
                                         verts.Add(vert);

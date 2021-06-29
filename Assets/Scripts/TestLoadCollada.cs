@@ -77,7 +77,7 @@ public class TestLoadCollada : MonoBehaviour
 
     private void Update()
     {
-#if false
+#if true
         for (int i = 0; i < meshes.Count; ++i)
         {
             Graphics.DrawMesh(meshes[i], gameWorld.entities[i].position, Quaternion.Euler(rotation), debugMat, 1, Camera.main);
