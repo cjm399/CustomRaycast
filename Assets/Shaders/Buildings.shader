@@ -92,6 +92,8 @@
 
             float4 frag(v2f i) : SV_Target
             {
+                const float bit255 = 1.0f / 255.0f;
+                //return i.color;
                 // Setup the vertex color to pixel map
 				float r = i.color.r * 256.0f;
 				float g = i.color.g * 256.0f;
@@ -100,11 +102,10 @@
 
 				float x = pixelIndex % 256;
 				float y = pixelIndex / 256;
-
+                
 				pixelPos = float2(x / 256.0f, y / 256.0f);
-				pixelColor = tex2D(_LookupTex, pixelPos);
 
-				return pixelColor;
+				pixelColor = tex2D(_LookupTex, pixelPos);
 
 				float4 col = float4(0,0,0,1);
 
@@ -114,24 +115,20 @@
 				float4 texIndustrial = tex2D(_IndustrialTex, i.uvIndustrial);
 				float4 texSpecial = tex2D(_SpecialTex, i.uvSpecial);
 
+                //Unknown Zone
+                col = pixelColor.b == 0 ? float4(1, 0, 1, 1) : col;
+
                 // Commercial
-				col = pixelColor.b <= .0f ? float4(1, 0, 1, 1) : col;
-                col = pixelColor.b >= .4f ? _CommercialTint : col;
+                col = pixelColor.b == bit255 ? _CommercialTint : col;
 
                 // Industrial
-                col = pixelColor.b >= .7f ? _IndustrialTint: col;
+                col = pixelColor.b == 2 * bit255 ? _IndustrialTint : col;
 
                 // Residential
-                col = pixelColor.b >= .9f ? _ResidentialTint : col;
+                col = pixelColor.b == 3 * bit255 ? _ResidentialTint : col;
 
-                // Special
-                //col = pixelColor.b <= .4f ? _SpecialTint : col;
-
-
-                //col = pixelColor.b <= 0 ? 0 : col;
-
-
-
+                //Special Purpose
+                col = pixelColor.b == 4 * bit255 ? _SpecialTint : col;
 
                 //UNITY_APPLY_FOG(i.fogCoord, col);
                 return col;

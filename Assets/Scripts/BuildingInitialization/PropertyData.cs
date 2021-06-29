@@ -103,7 +103,7 @@ public static class PropertyData
         zoningColors = new UnityEngine.Color32[]
     {
         new UnityEngine.Color32(151,174,248,255), //Blue Pocket City
-        new UnityEngine.Color32(242, 197, 68, 255), //Yello Pocket City
+        new UnityEngine.Color32(242, 197, 68, 255), //Yellow Pocket City
         new UnityEngine.Color32(167,208,91,255), //Green Pocket City
         new UnityEngine.Color32(173,152,212,255), //Purple Pastel
         new UnityEngine.Color32(72,236,125,255), //Lime Green Grass,
@@ -113,12 +113,12 @@ public static class PropertyData
     public static UnityEngine.Color32[]
     zoningMappingColors = new UnityEngine.Color32[]
 {
-        new UnityEngine.Color(0,0,.5f,1), //Blue Pocket City
-        new UnityEngine.Color(0,0,.75f,1), //Yello Pocket City
-        new UnityEngine.Color(0,0, 1f,1), //Green Pocket City
-        new UnityEngine.Color(0,0,.4f,1), //Purple Pastel
-        new UnityEngine.Color(0,0,.5f,1), //Lime Green Grass,
-        new UnityEngine.Color(0,0,.6f,1), //Bright Bad Red
+        new UnityEngine.Color32(0,0,1,0), //Blue Pocket City
+        new UnityEngine.Color32(0,0,2,0), //Yellow Pocket City
+        new UnityEngine.Color32(0,0,3,0), //Green Pocket City
+        new UnityEngine.Color32(0,0,4,0), //Purple Pastel
+        new UnityEngine.Color32(0,0,5,0), //Lime Green Grass,
+        new UnityEngine.Color32(0,0,6,0), //Bright Bad Red
 };
 
 
