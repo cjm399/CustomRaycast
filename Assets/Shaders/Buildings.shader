@@ -95,9 +95,9 @@
                 const float bit255 = 1.0f / 255.0f;
                 //return i.color;
                 // Setup the vertex color to pixel map
-				float r = i.color.r * 256.0f;
-				float g = i.color.g * 256.0f;
-				float gVal = floor((g * 256.0f));
+				uint r = i.color.r * 255.1f;
+				uint g = i.color.g * 255.1f;
+				float gVal = g * 256.0f;
 				pixelIndex = gVal + r;
 
 				float x = pixelIndex % 256;
@@ -106,6 +106,7 @@
 				pixelPos = float2(x / 256.0f, y / 256.0f);
 
 				pixelColor = tex2D(_LookupTex, pixelPos);
+
 
 				float4 col = float4(0,0,0,1);
 
