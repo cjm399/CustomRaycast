@@ -93,19 +93,23 @@
             float4 frag(v2f i) : SV_Target
             {
                 const float bit255 = 1.0f / 255.0f;
-                //return i.color;
-                // Setup the vertex color to pixel map
-				float r = i.color.r * 256.0f;
-				float g = i.color.g * 256.0f;
-				float gVal = floor((g * 256.0f));
+
+                //Due to rounding point errors, we need to multiply by spomething a little larger than 255; (8 bits go up to 255, colors range 0-255)
+				uint r = i.color.r * 255.1f;
+				uint g = i.color.g * 255.1f;
+                //Green value increments when Red gets to 255, go g == 1, is the 256 element 
+				float gVal = g * 256.0f;
 				pixelIndex = gVal + r;
 
+                //I know here that my lookup texture is 256x256 dimensions.
 				float x = pixelIndex % 256;
 				float y = pixelIndex / 256;
                 
+                //Divide pixelPos/textureDim to get from pixel space into UV space (0-1)
 				pixelPos = float2(x / 256.0f, y / 256.0f);
 
 				pixelColor = tex2D(_LookupTex, pixelPos);
+
 
 				float4 col = float4(0,0,0,1);
 
