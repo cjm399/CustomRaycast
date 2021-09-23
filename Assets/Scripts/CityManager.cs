@@ -57,8 +57,8 @@ public class CityManager : MonoBehaviour
 
     private void Start()
     {
-#if UNITY_WEBGL
-        StartCoroutine(GoogleGetData("https://simphl.s3.amazonaws.com/buildings_obj.obj"));
+#if WEB_HOSTED_DATA
+        StartCoroutine(GoogleGetData("https://simphl.s3.amazonaws.com/buildings_obj.obj")); //NOTE! THIS IS OLD AND DOES NOT EXIST ANYMORE
 #else
         string fileName = Path.Combine(Application.streamingAssetsPath, objFile);
 
@@ -73,6 +73,7 @@ public class CityManager : MonoBehaviour
         debugMeshes = new List<Mesh>(objLen);
         gameWorld = new world(objLen);
         MeshHelpers.CreateMeshesFromObj(objData, ref debugMeshes, ref gameWorld);
+        Raycast.InitRaycastData(ref gameWorld);
 #endif
 
         //Generate Ground plane.
@@ -106,12 +107,14 @@ public class CityManager : MonoBehaviour
             int objLen = (int)(downloadedData.Split('o').Length * 1.2f);
             debugMeshes = new List<Mesh>(objLen);
             MeshHelpers.CreateMeshesFromObj(downloadedData, ref debugMeshes, ref gameWorld);
+            Raycast.InitRaycastData(ref gameWorld);
         }
     }
 
     private void OnDisable()
     {
         Raycast.boundsArray.Dispose();
+        Raycast.partitionsArray.Dispose();
     }
 
     private void Update()
