@@ -4,241 +4,248 @@ using System.Xml;
 
 public static class MeshHelpers
 {
-    public static bool CreateMeshesFromObj(string _objContent, ref List<Mesh> _meshes, ref world _gameWorld)
+    public static void CreateMeshesFromEpa(string _objContent)
     {
         bool isValidObj = _objContent != null && _objContent.Length > 0;
-        if(isValidObj)
+        if (isValidObj)
         {
-            string[] lines = _objContent.Split(new string[] { System.Environment.NewLine, "\n" }, System.StringSplitOptions.RemoveEmptyEntries);
-
             entity curr = new entity();
             Mesh currMesh = new Mesh();
-            List<Vector3> verts = new List<Vector3>();
-            List<int> triangles = new List<int>();
-            List<entity> entities = new List<entity>();
+            List<Vector3> verts = new List<Vector3>(100);
+            List<int> triangles = new List<int>(550);
             bool first = true;
             int vertexOffset = 0;
             int count = 0;
-            foreach (string line in lines)
+
+            int maxVertCount = 0;
+            int maxTriCount = 0;
+
+            //int tcount = 0;
+
+            int remainingSize = _objContent.Length;
+            int startSize = remainingSize;
+
+            float systemMemory = Mathf.Clamp((float)SystemInfo.systemMemorySize, 512, (float)SystemInfo.systemMemorySize);
+
+            //Only want to use half of avalible memory.
+            systemMemory = (systemMemory / 1024f) / 2f;
+            int lookupLength = (int)(100_000 * systemMemory);
+            //WebGL sucks, so we'll use a quarter?
+#if UNITY_WEBGL
+            lookupLength = (int)(100_000 * systemMemory / 2);
+#endif
+
+            int lookupIndex = lookupLength;
+            string[] lines = new string[lookupLength / 7]; //7 seems to be one of the shorter character counts for a line.
+            string line = "";
+            string function = "";
+            //We can afford running slower than 30FPS here
+            //Web GL seems to crash from running low on memory at slower FPS.
+            float msPerFrame = 1000f / 3f;
+            string[] points = new string[3];
+            string[] colorVals = new string[4];
+            while (remainingSize > 0)
             {
-                char function = line[0];
-                //New object coming in!!!
-                if (function == 'o')
+                lookupIndex = Mathf.Min(lookupLength, remainingSize - 1);
+                char lookupChar = _objContent[lookupIndex];
+                //Need to split into objects.
+                while (lookupChar != 'o' && lookupIndex != remainingSize - 1)
                 {
-                    count++;
-                    if (!first)
-                    {
-                        curr.position.x /= verts.Count;
-                        curr.position.z /= verts.Count;
+                    lookupChar = _objContent[++lookupIndex];
+                }
+                if (lookupChar == 'o')
+                {
+                    lookupIndex--;
+                }
+                string cluster = _objContent.Substring(0, lookupIndex);
+                int linesLength = FastSplit(ref cluster, ref lines, '\n');
+                //Debug.Log($"lines length : {linesLength}");
+                //Debug.Log($"First function {lines[0].Split(' ')[0]}");
 
-                        for (int i = 0; i < verts.Count; ++i)
+                for (int lineIndex = 0; lineIndex < linesLength; ++lineIndex)
+                {
+                    line = lines[lineIndex];
+                    if (line[line.Length - 1] == '\r')
+                    {
+                        line = line.Substring(0, line.Length - 1);
+                    }
+
+                    function = line.Split(' ')[0];
+                    //New object coming in!!!
+                    if (function == "o")
+                    {
+                        count++;
+                        if (!first)
                         {
-                            Vector3 newPos = verts[i];
-                            newPos.x -= curr.position.x;
-                            newPos.y -= curr.position.y;
-                            newPos.z -= curr.position.z;
-                            verts[i] = newPos;
+                            curr.position.x /= (verts.Count);
+                            curr.position.z /= (verts.Count);
+
+                            for (int i = 0; i < verts.Count; ++i)
+                            {
+                                Vector3 newPos = verts[i];
+                                newPos.x -= curr.position.x;
+                                newPos.y -= curr.position.y;
+                                newPos.z -= curr.position.z;
+                                verts[i] = newPos;
+                            }
+
+                            currMesh.SetVertices(verts);
+                            currMesh.SetTriangles(triangles, 0);
+                            currMesh.RecalculateNormals();
+                            currMesh.RecalculateBounds();
+
+                            curr.bounds.minPoints = currMesh.bounds.min;
+                            curr.bounds.maxPoints = currMesh.bounds.max;
+
+                            curr.bounds.minPoints.x += curr.position.x;
+                            curr.bounds.maxPoints.x += curr.position.x;
+                            curr.bounds.minPoints.y += curr.position.y;
+                            curr.bounds.maxPoints.y += curr.position.y;
+                            curr.bounds.minPoints.z += curr.position.z;
+                            curr.bounds.maxPoints.z += curr.position.z;
+                            curr.bounds.center = curr.position;
+
+                            //currMesh = MakeCubeFromBounds(curr.bounds);
+                            //currMesh.RecalculateNormals();
+
+                            GameWorld.SetTags(ref curr, tag.BUILDING);
+                            GameWorld.AddEntity(ref CityManager.Instance.gameWorld, ref curr);
+                            vertexOffset += verts.Count;
                         }
-
-                        currMesh.SetVertices(verts);
-                        currMesh.SetTriangles(triangles, 0);
-                        currMesh.RecalculateNormals();
-                        currMesh.RecalculateBounds();
-                        curr.bounds.minPoints = currMesh.bounds.min;
-                        curr.bounds.maxPoints = currMesh.bounds.max;
-
-                        curr.bounds.minPoints.x += curr.position.x;
-                        curr.bounds.maxPoints.x += curr.position.x;
-                        curr.bounds.minPoints.y += curr.position.y;
-                        curr.bounds.maxPoints.y += curr.position.y;
-                        curr.bounds.minPoints.z += curr.position.z;
-                        curr.bounds.maxPoints.z += curr.position.z;
-
-
-                        currMesh = MakeCubeFromBounds(curr.bounds);
-                        currMesh.RecalculateNormals();
-                        GameWorld.SetTags(ref curr, tag.BUILDING);
-                        GameWorld.AddEntity(ref _gameWorld, ref curr);
-                        _meshes.Add(currMesh);
-                        vertexOffset += verts.Count;
+                        else
+                        {
+                            first = false;
+                        }
+                        string objName = line.Substring(2);
+                        curr = new entity();
+                        curr.name = objName;
+                        currMesh = new Mesh();
+                        if (verts.Count > maxVertCount)
+                            maxVertCount = verts.Count;
+                        if (triangles.Count > maxTriCount)
+                            maxTriCount = triangles.Count;
+                        triangles.Clear();
+                        verts.Clear();
                     }
-                    else
+                    //New vert coming in
+                    else if (function == "v")
                     {
-                        first = false;
-                    }
-                    int endNameIndex = line.IndexOf("_Mesh");
-                    string objName = line.Substring(2, endNameIndex - 2);
-                    curr = new entity();
-                    curr.name = objName;
-                    currMesh = new Mesh();
-                    triangles.Clear();
-                    verts.Clear();
-                }
-                //New vert coming in
-                else if (function == 'v')
-                {
-                    string[] points = line.Substring(2).Split(' ');
-                    float x = float.Parse(points[0]);
-                    float y = float.Parse(points[1]);
-                    float z = float.Parse(points[2]);
+                        string sub = line.Substring(2);
+                        FastSplit(ref sub, ref points, ' ');
+                        float x = -1f * float.Parse(points[0]) / 100;
+                        float y = float.Parse(points[1]) / 100;
+                        float z = float.Parse(points[2]) / 100;
 
-                    if (curr.position.y > y)
-                    {
-                        curr.position.y = y;
+                        if (curr.position.y > y)
+                        {
+                            curr.position.y = y;
+                        }
+                        curr.position.x += x;
+                        curr.position.z += z;
+                        verts.Add(new Vector3(x, y, z));
                     }
-                    curr.position.x += x;
-                    curr.position.z += z;
-                    verts.Add(new Vector3(x, y, z));
+                    else if (function == "c")
+                    {
+                        string sub = line.Substring(2);
+                        FastSplit(ref sub, ref colorVals, ' ');
+                        float rf = float.Parse(colorVals[0]);
+                        float gf = float.Parse(colorVals[1]);
+                        float bf = float.Parse(colorVals[2]);
+                        float af = float.Parse(colorVals[3]);
+
+                        int r = (int)(rf * 255.1f);
+                        int g = (int)(gf * 255.1f);
+                        int b = (int)(bf * 255.1f);
+                        //A seems to not be reliable in FBX, seems to show always as 1 in the shader. DO NOT USE!
+                        int a = (int)(af * 255.1f);
+                        int vertexIndex = (b * 256 * 256) + (g * 256) + r;
+                        curr.vertexColorIndex = vertexIndex;
+                    }
+                    else if (function == "f")
+                    {
+                        string sub = line.Substring(2);
+                        FastSplit(ref sub, ref points, ' ');
+                        int a = int.Parse(points[0]);
+                        int b = int.Parse(points[1]);
+                        int c = int.Parse(points[2]);
+                        triangles.Add(a);
+                        triangles.Add(b);
+                        triangles.Add(c);
+                    }
+                    else if (function != "vc" && function[0] != '#')
+                    {
+                        Debug.Log($"Unknown function {function}");
+                    }
                 }
-                else if (function == 'f')
+
+                if (lookupIndex + 1 != remainingSize)
                 {
-                    string[] points = line.Substring(2).Split(' ');
-                    //obj vert index starts at 1.
-                    int a = int.Parse(points[0]) - 1 - vertexOffset;
-                    int b = int.Parse(points[1]) - 1 - vertexOffset;
-                    int c = int.Parse(points[2]) - 1 - vertexOffset;
-                    triangles.Add(a);
-                    triangles.Add(b);
-                    triangles.Add(c);
+                    _objContent = _objContent.Substring(lookupIndex + 1);
                 }
+                else
+                {
+                    _objContent = "";
+                }
+
+                remainingSize = _objContent.Length;
             }
+
+            #region Also make sure to create the last object.
+            curr.position.x /= verts.Count;
+            curr.position.z /= verts.Count;
+
+            for (int i = 0; i < verts.Count; ++i)
+            {
+                Vector3 newPos = verts[i];
+                newPos.x -= curr.position.x;
+                newPos.y -= curr.position.y;
+                newPos.z -= curr.position.z;
+                verts[i] = newPos;
+            }
+
+            currMesh.SetVertices(verts);
+            currMesh.SetTriangles(triangles, 0);
+            currMesh.RecalculateNormals();
+            currMesh.RecalculateBounds();
+            curr.bounds.minPoints = currMesh.bounds.min;
+            curr.bounds.maxPoints = currMesh.bounds.max;
+
+            curr.bounds.minPoints.x += curr.position.x;
+            curr.bounds.maxPoints.x += curr.position.x;
+            curr.bounds.minPoints.y += curr.position.y;
+            curr.bounds.maxPoints.y += curr.position.y;
+            curr.bounds.minPoints.z += curr.position.z;
+            curr.bounds.maxPoints.z += curr.position.z;
+            //curr.bounds.center = curr.position;
+
+            currMesh = MakeCubeFromBounds(curr.bounds);
+            currMesh.RecalculateNormals();
+            GameWorld.SetTags(ref curr, tag.BUILDING);
+            GameWorld.AddEntity(ref CityManager.Instance.gameWorld, ref curr);
+            vertexOffset += verts.Count;
+            #endregion
         }
-        return isValidObj;
     }
 
-    public static bool CreateMeshesFromCollada(string _xmlContent, ref List<Mesh> _meshes, ref world _gameWorld)
+    public static int FastSplit(ref string _str, ref string[] _splits, params char[] _hits)
     {
-        XmlDocument doc = new XmlDocument();
-        doc.LoadXml(_xmlContent);
-        XmlNode geoNode = doc.DocumentElement.ChildNodes[4];
-        
-        foreach(XmlNode node in geoNode.ChildNodes)
+        int index = 0;
+        int lastHit = -1;
+        for (int i = 0; i < _str.Length; ++i)
         {
-            XmlElement nodeElement = (XmlElement)node;
-            string name = nodeElement.GetAttribute("name");
-            foreach( XmlNode meshNode in nodeElement.ChildNodes)
+            for (int hitIndex = 0; hitIndex < _hits.Length; ++hitIndex)
             {
-                Mesh currMesh = new Mesh();
-                List<Vector3> verts = new List<Vector3>();
-                List<int> triangles = new List<int>();
-                entity curr = new entity();
-
-                foreach (XmlNode sourceNode in meshNode.ChildNodes)
+                if (_str[i] == _hits[hitIndex])
                 {
-                    if(sourceNode.Name == "source")
-                    {
-                        if (sourceNode.Attributes["id"].InnerText.Contains("positions"))
-                        {
-                            foreach (XmlNode childNode in sourceNode.ChildNodes)
-                            {
-                                //VERTEX POSITION INFO
-                                if (childNode.Name == "float_array")
-                                {
-                                    string[] vals = childNode.InnerText.Split(' ');
-                                    for (int i = 0; i < vals.Length / 3; ++i)
-                                    {
-                                        float x = -1f*float.Parse(vals[(i * 3) + 0])/100f;
-                                        float y = float.Parse(vals[(i * 3) + 1])/100f;
-                                        float z = float.Parse(vals[(i * 3) + 2])/100f;
-
-                                        Vector3 vert = new Vector3(x, y, z);
-                                        verts.Add(vert);
-                                        if (curr.position.y > y)
-                                        {
-                                            curr.position.y = y;
-                                        }
-                                        curr.position.x += x;
-                                        curr.position.z += z;
-                                    }
-                                }
-                            }
-                        }
-                        else if (sourceNode.Attributes["id"].InnerText.Contains("colors"))
-                        {
-                            foreach (XmlNode childNode in sourceNode.ChildNodes)
-                            {
-                                //COLOR INFO
-                                if (childNode.Name == "float_array")
-                                {
-                                    string[] vals = childNode.InnerText.Split(' ');
-                                    float rf = float.Parse(vals[0]);
-                                    float gf = float.Parse(vals[1]);
-                                    float bf = float.Parse(vals[2]);
-                                    float af = float.Parse(vals[3]);
-
-                                    int r = (int)(rf * 255);
-                                    int g = (int)(gf * 255);
-                                    int b = (int)(bf * 255);
-                                    //A seems to not be reliable in FBX, seems to show always as 1 in the shader. DO NOT USE!
-                                    int a = (int)(af * 255);
-                                    int vertexIndex = (a * 256 * 256 * 256) + (b * 256 * 256) + (g * 256) + r;
-                                    curr.vertexColorIndex = vertexIndex;
-                                }
-                            }
-                        }
-                    }
-                    else if(sourceNode.Name == "verticies")
-                    {
-                    }
-                    else if(sourceNode.Name == "triangles")
-                    {
-                        int vertexOffset = 0;
-                        int vertexStart = 0;
-                        foreach(XmlNode childNode in sourceNode.ChildNodes)
-                        {
-                            if(childNode.Name == "input")
-                            {
-                                if(childNode.Attributes["semantic"].InnerText == "VERTEX")
-                                {
-                                    vertexStart = int.Parse(childNode.Attributes["offset"].InnerText);
-                                }
-
-                                int tmpMaxOffset = int.Parse(childNode.Attributes["offset"].InnerText) + 1;
-
-                                if (tmpMaxOffset > vertexOffset)
-                                {
-                                    vertexOffset = tmpMaxOffset;
-                                }
-                            }
-                            if(childNode.Name == "p")
-                            {
-                                string[] vals = childNode.InnerText.Split(' ');
-                                for(int i = 0; i < vals.Length/vertexOffset; ++i)
-                                {
-                                    int vertIndex = int.Parse(vals[vertexStart + (vertexOffset * i)]);
-                                    triangles.Add(vertIndex);
-                                }
-                            }
-                        }
-                    }
+                    int pos = lastHit + 1;
+                    _splits[index++] = _str.Substring(pos, i - (pos));
+                    lastHit = i;
                 }
-
-                curr.position.x /= verts.Count;
-                curr.position.z /= verts.Count;
-
-                for (int i = 0; i < verts.Count; ++i)
-                {
-                    Vector3 newPos = verts[i];
-                    newPos.x -= curr.position.x;
-                    newPos.y -= curr.position.y;
-                    newPos.z -= curr.position.z;
-                    verts[i] = newPos;
-                }
-
-                currMesh.SetVertices(verts);
-                currMesh.SetTriangles(triangles, 0);
-                currMesh.RecalculateBounds();
-                currMesh.RecalculateNormals();
-                _meshes.Add(currMesh);
-                curr.bounds.minPoints = currMesh.bounds.min;
-                curr.bounds.maxPoints = currMesh.bounds.max;
-                string usedName = name;//.Substring(0, name.IndexOf("_Mesh"));
-                curr.name = usedName;
-                GameWorld.SetTags(ref curr, tag.BUILDING);
-                GameWorld.AddEntity(ref _gameWorld, ref curr);
             }
         }
-        return true;
+        int finalPos = lastHit + 1;
+        _splits[index++] = _str.Substring(finalPos, _str.Length - finalPos);
+        return index;
     }
 
     public static Mesh MakeCubeFromBounds(bounds _b)

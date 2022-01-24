@@ -25,7 +25,7 @@ public class TestLoadCollada : MonoBehaviour
 
         string colladaData = File.ReadAllText(fileName);
 
-        MeshHelpers.CreateMeshesFromCollada(colladaData, ref meshes, ref gameWorld);
+        //MeshHelpers.CreateMeshesFromCollada(colladaData, ref meshes, ref gameWorld);
 
         InitializePropertyData propData = FindObjectOfType<InitializePropertyData>();
 

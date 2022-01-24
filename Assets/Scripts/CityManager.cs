@@ -17,7 +17,7 @@ public class CityManager : MonoBehaviour
 
     private Vector3 groundPos = new Vector3(0,-.1f,0);
 
-    private world gameWorld;
+    public world gameWorld;
     private List<Mesh> debugMeshes;
 
     private int selectedEntityIndex = -1;
@@ -57,9 +57,6 @@ public class CityManager : MonoBehaviour
 
     private void Start()
     {
-#if WEB_HOSTED_DATA
-        StartCoroutine(GoogleGetData("https://simphl.s3.amazonaws.com/buildings_obj.obj")); //NOTE! THIS IS OLD AND DOES NOT EXIST ANYMORE
-#else
         string fileName = Path.Combine(Application.streamingAssetsPath, objFile);
 
         if (!File.Exists(fileName))
@@ -72,9 +69,8 @@ public class CityManager : MonoBehaviour
         int objLen = (int)(objData.Split('o').Length * 1.2f);
         debugMeshes = new List<Mesh>(objLen);
         gameWorld = new world(objLen);
-        MeshHelpers.CreateMeshesFromObj(objData, ref debugMeshes, ref gameWorld);
+        MeshHelpers.CreateMeshesFromEpa(objData);
         Raycast.InitRaycastData(ref gameWorld);
-#endif
 
         //Generate Ground plane.
         bounds ground = new bounds();
@@ -88,27 +84,6 @@ public class CityManager : MonoBehaviour
         groundEntity.bounds.maxPoints = groundMesh.bounds.max;
         groundEntity.name = "Ground";
         GameWorld.AddEntity(ref gameWorld, ref groundEntity);
-    }
-
-    private IEnumerator GoogleGetData(string _dataURL)
-    {
-        string downloadedData = null;
-        UnityWebRequest webRequest = UnityWebRequest.Get(_dataURL);
-
-        yield return webRequest.SendWebRequest();
-
-        if (webRequest.isNetworkError || webRequest.isHttpError)
-        {
-            Debug.LogError($"Error downloading building data from Google: {webRequest.error}");
-        }
-        else
-        {
-            downloadedData = webRequest.downloadHandler.text;
-            int objLen = (int)(downloadedData.Split('o').Length * 1.2f);
-            debugMeshes = new List<Mesh>(objLen);
-            MeshHelpers.CreateMeshesFromObj(downloadedData, ref debugMeshes, ref gameWorld);
-            Raycast.InitRaycastData(ref gameWorld);
-        }
     }
 
     private void OnDisable()

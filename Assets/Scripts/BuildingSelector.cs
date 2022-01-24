@@ -17,7 +17,7 @@ public class BuildingSelector : MonoBehaviour
 
         if(Input.GetKeyDown(KeyCode.Mouse2))
         {
-            if (Physics.Raycast(ray, out hit, 1000))
+            if (Physics.Raycast(ray, out hit, 10000))
             {
                 unityRaycastTransform.position = hit.point;
                 selectionSphere.center = unityRaycastTransform.position;

@@ -8,9 +8,9 @@ public static class Raycast
 {
     public static NativeArray<bounds> boundsArray = new NativeArray<bounds>(30_000, Allocator.Persistent, NativeArrayOptions.ClearMemory);
 
-    public static readonly float2 areaSize = new float2(100, 100);
+    public static readonly float2 areaSize = new float2(7000, 4500);
     public static readonly int partitionCastcades = 3;
-    public static readonly float partitionGranularity = 1f / 4f;
+    public static readonly float partitionGranularity = 1f / 3f;
     public static readonly float2 partitionSize = areaSize * partitionGranularity;
     public static readonly int partitionsCount = (int)System.Math.Round(1f / partitionGranularity);
     public static readonly int topLevelPartitions = partitionsCount * partitionsCount;
